@@ -25,10 +25,10 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileBlob = await fetch("mcad.webm").then((res) => res.blob());
+      const fileBlob = await fetch("nightmare.mp4").then((res) => res.blob());
       setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
-      await demuxer.load(new File([fileBlob], "mcad.webm"));
+      await demuxer.load(new File([fileBlob], "nightmare.mp4"));
       const mp4Info = demuxer.getMediaInfo();
       let framesPerSecond = 0;
       (await mp4Info).streams
