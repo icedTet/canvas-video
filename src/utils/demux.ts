@@ -11,7 +11,6 @@ export class Demuxer {
   }
 
   private constructor() {
-    if (globalThis.document.location.origin)
     this.demux = new WebDemuxer({
       wasmFilePath: `${globalThis.document.location.origin}/dmux/web-demuxer.wasm`,
     });
