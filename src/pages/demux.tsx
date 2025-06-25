@@ -111,7 +111,7 @@ export const DemuxRender = () => {
       <span className="text-sm text-gray-500">FPS: {fps}</span>
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
-          className="w-full rounded-lg shadow-lg opacity-50 absolute"
+          className="w-full rounded-lg shadow-lg opacity-5 absolute"
           controls
           content="true"
           playsInline
