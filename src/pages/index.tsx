@@ -16,23 +16,23 @@ export default function Home() {
   const videoRef = React.useRef<HTMLVideoElement>(null);
   useEffect(() => {
     let rerun = true;
-    const drawCallback = ()=>{
+    const drawCallback = () => {
       if (!rerun) return;
       const canvas = canvasRef.current;
       const video = videoRef.current;
       if (!canvas || !video) return;
 
       const ctx = canvas.getContext("2d");
-      if (!ctx) return
+      if (!ctx) return;
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       requestAnimationFrame(drawCallback);
     };
     drawCallback();
 
-    return
-    
-
+    return () => {
+      rerun = false;
+    };
   }, []);
   return (
     <div
