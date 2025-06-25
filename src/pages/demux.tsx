@@ -49,7 +49,7 @@ export const DemuxRender = () => {
           console.log("Video stream reading finished");
           break;
         }
-        await new Promise((r) => setTimeout(r, 1000 / 30)); // Yield to the event loop
+        await new Promise((r) => setTimeout(r, 1000 / 60)); // Yield to the event loop
         decoder.decode(value);
       }
     })();
@@ -61,7 +61,7 @@ export const DemuxRender = () => {
       <p>This is the demux page content.</p>
       <div className={`flex w-full grow bg-purple-400`} ref={divRef}>
         <video
-          className="w-full rounded-lg shadow-lg"
+          className="w-full rounded-lg shadow-lg hidden"
           loop
           controls
           content="true"
