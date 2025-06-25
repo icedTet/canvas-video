@@ -5,8 +5,17 @@ export const DemuxRender = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const divRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [fileBlob, setFileBlob] = useState(null as Blob | null);
   const [fps, setFps] = useState(0);
-
+  const [urlBlob, setUrlBlob] = useState(null as string | null);
+  useEffect(() => {
+    if (!fileBlob) return;
+    const url = URL.createObjectURL(fileBlob);
+    setUrlBlob(url);
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [fileBlob]);
   useEffect(() => {
     // Initialize the canvas and set its dimensions
     const canvas = canvasRef.current;
@@ -17,8 +26,19 @@ export const DemuxRender = () => {
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
       const fileBlob = await fetch("mcad.webm").then((res) => res.blob());
+      setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
       await demuxer.load(new File([fileBlob], "mcad.webm"));
+      const mp4Info = demuxer.getMediaInfo();
+      let framesPerSecond = 0;
+      (await mp4Info).streams
+        .filter((s) => s.codec_type_string === "video")
+        .forEach((s) => {
+          console.log(
+            `Stream ${s.index}: ${s.codec_type_string} - ${s.codec_name} (${s.width}x${s.height})`
+          );
+          framesPerSecond = ~~s.avg_frame_rate.split("/")[0];
+        });
       const audio = videoRef.current;
       const videoDecoderConfig = await demuxer.getDecoderConfig("video");
       const decoder = new VideoDecoder({
@@ -54,18 +74,32 @@ export const DemuxRender = () => {
           console.log("Video stream reading finished");
           break;
         }
-        await new Promise((r) =>
-          setTimeout(r, 1000 / 60 - (performance.now() - startTime))
-        );
-        // console.log(`Decoded frame ${frameCount} at time ${performance.now()}`);
-        const currentTime = performance.now();
-        if (currentTime - lastTime >= 1000) {
-          setFps(frameCount/((currentTime - lastTime) / 1000));
-          lastTime = currentTime;
+        decoder.decode(value);
+        // figure out the correct wait time to maintain the FPS
+        // if the current time is less than the start time, we need to wait
+        const whereWeAreSupposedToBe = (frameCount+1) * (1000 / framesPerSecond) + lastTime;
+        const whereWeAreRightNow = performance.now();
+        const calculatedWaitTillNextFrame = whereWeAreSupposedToBe - whereWeAreRightNow;
+        
+        console.log("Waiting for next frame:", calculatedWaitTillNextFrame, "ms");
+        if (calculatedWaitTillNextFrame > 0) {
+            await new Promise((resolve) => setTimeout(resolve, calculatedWaitTillNextFrame));
+        }
+
+        // if (currentTime - lastTime >= 1000) {
+        //   setFps(frameCount / ((currentTime - lastTime) / 1000));
+        //   lastTime = currentTime;
+        //   frameCount = 0;
+        // }
+
+        frameCount++;
+        if (frameCount % 60 === 0) {
+          console.log(
+            `Decoded 60 frames, within ${performance.now() - lastTime} ms`
+          );
+          lastTime = performance.now();
           frameCount = 0;
         }
-        decoder.decode(value);
-        frameCount++;
       }
     })();
   }, []);
@@ -75,16 +109,15 @@ export const DemuxRender = () => {
       <h1>Demux Page</h1>
       <p>This is the demux page content.</p>
       <span className="text-sm text-gray-500">FPS: {fps}</span>
-      <div className={`flex w-full grow bg-purple-400`} ref={divRef}>
+      <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
-          className="w-full rounded-lg shadow-lg hidden"
-          loop
+          className="w-full rounded-lg shadow-lg opacity-50 absolute"
           controls
           content="true"
           playsInline
           ref={videoRef}
+          src={urlBlob || ""}
         >
-          <source src="/mcad.webm" type="video/mp4" />
           Your browser does not support the video tag.
         </video>
         <canvas ref={canvasRef} />
