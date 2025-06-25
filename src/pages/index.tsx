@@ -42,6 +42,7 @@ export default function Home() {
     }, 100);
     
     return () => clearInterval(interval);
+    
   }, []);
   return (
     <><Head>
