@@ -7,6 +7,7 @@ export const DemuxRender = () => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [fileBlob, setFileBlob] = useState(null as Blob | null);
   const [fps, setFps] = useState(0);
+  const [sourceFPS, setSourceFPS] = useState(0);
   const [urlBlob, setUrlBlob] = useState(null as string | null);
   useEffect(() => {
     if (!fileBlob) return;
@@ -29,17 +30,26 @@ export const DemuxRender = () => {
       setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
       await demuxer.load(new File([fileBlob], "nightmare.mp4"));
-      const mp4Info = demuxer.getMediaInfo();
+      const mp4Info = await demuxer.getMediaInfo();
+      console.log("MP4 Info:", mp4Info);
       let framesPerSecond = 0;
-      (await mp4Info).streams
+      mp4Info.streams
         .filter((s) => s.codec_type_string === "video")
         .forEach((s) => {
           console.log(
             `Stream ${s.index}: ${s.codec_type_string} - ${s.codec_name} (${s.width}x${s.height})`
           );
-          framesPerSecond = ~~s.avg_frame_rate.split("/")[0];
+          framesPerSecond =
+            Number(s.avg_frame_rate.split("/")[0]) /
+            Number(s.avg_frame_rate.split("/")[1]);
         });
+        setSourceFPS(framesPerSecond);
       const audio = videoRef.current;
+      console.log(
+        `Video FPS: ${framesPerSecond}, Audio: ${
+          audio ? "present" : "not present"
+        }`
+      );
       const videoDecoderConfig = await demuxer.getDecoderConfig("video");
       const decoder = new VideoDecoder({
         output: (frame) => {
@@ -56,12 +66,27 @@ export const DemuxRender = () => {
           );
           frame.close();
         },
+
         error: (e) => {
           console.error("video decoder error:", e);
         },
       });
 
       decoder.configure(videoDecoderConfig);
+
+      const audioDecoderConfig = await demuxer.getDecoderConfig("audio");
+      const audioDecoder = new AudioDecoder({
+        output: (audioFrame) => {
+          // Handle audio frame output if needed
+          // For now, we just log the audio frame
+          console.log("Audio frame received:", audioFrame);
+          audioFrame.close();
+        },
+        error: (e) => {
+          console.error("audio decoder error:", e);
+        },
+      });
+
       const reader = demuxer.read("video", 0, 0).getReader();
       audio?.play();
       let frameCount = 0;
@@ -77,13 +102,21 @@ export const DemuxRender = () => {
         decoder.decode(value);
         // figure out the correct wait time to maintain the FPS
         // if the current time is less than the start time, we need to wait
-        const whereWeAreSupposedToBe = (frameCount+1) * (1000 / framesPerSecond) + lastTime;
+        const whereWeAreSupposedToBe =
+          (frameCount + 1) * (1000 / framesPerSecond) + lastTime;
         const whereWeAreRightNow = performance.now();
-        const calculatedWaitTillNextFrame = whereWeAreSupposedToBe - whereWeAreRightNow;
-        
-        console.log("Waiting for next frame:", calculatedWaitTillNextFrame, "ms");
+        const calculatedWaitTillNextFrame =
+          whereWeAreSupposedToBe - whereWeAreRightNow;
+
+        // console.log(
+        //   "Waiting for next frame:",
+        //   calculatedWaitTillNextFrame,
+        //   "ms"
+        // );
         if (calculatedWaitTillNextFrame > 0) {
-            await new Promise((resolve) => setTimeout(resolve, calculatedWaitTillNextFrame));
+          await new Promise((resolve) =>
+            setTimeout(resolve, calculatedWaitTillNextFrame)
+          );
         }
 
         // if (currentTime - lastTime >= 1000) {
@@ -97,6 +130,11 @@ export const DemuxRender = () => {
           console.log(
             `Decoded 60 frames, within ${performance.now() - lastTime} ms`
           );
+          console.log(
+            "Our FPS:",
+            frameCount / ((performance.now() - lastTime) / 1000)
+          );
+          setFps(frameCount / ((performance.now() - lastTime) / 1000));
           lastTime = performance.now();
           frameCount = 0;
         }
@@ -108,10 +146,10 @@ export const DemuxRender = () => {
     <div className={`flex flex-col w-full h-full `}>
       <h1>Demux Page</h1>
       <p>This is the demux page content.</p>
-      <span className="text-sm text-gray-500">FPS: {fps}</span>
+      <span className="text-sm text-gray-500">FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}</span>
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
-          className="w-full rounded-lg shadow-lg opacity-5 absolute"
+          className="w-full rounded-lg shadow-lg opacity-50 absolute hue-rotate-90"
           controls
           content="true"
           playsInline
