@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Demuxer } from "../utils/demux";
 
 export const DemuxRender = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const divRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [fps, setFps] = useState(0);
 
   useEffect(() => {
     // Initialize the canvas and set its dimensions
@@ -43,14 +44,28 @@ export const DemuxRender = () => {
       decoder.configure(videoDecoderConfig);
       const reader = demuxer.read("video", 0, 0).getReader();
       audio?.play();
+      let frameCount = 0;
+      let lastTime = performance.now();
+
       while (true) {
+        const startTime = performance.now();
         const { done, value } = await reader.read();
         if (done) {
           console.log("Video stream reading finished");
           break;
         }
-        await new Promise((r) => setTimeout(r, 1000 / 60)); // Yield to the event loop
+        await new Promise((r) =>
+          setTimeout(r, 1000 / 60 - (performance.now() - startTime))
+        );
+        // console.log(`Decoded frame ${frameCount} at time ${performance.now()}`);
+        const currentTime = performance.now();
+        if (currentTime - lastTime >= 1000) {
+          setFps(frameCount/((currentTime - lastTime) / 1000));
+          lastTime = currentTime;
+          frameCount = 0;
+        }
         decoder.decode(value);
+        frameCount++;
       }
     })();
   }, []);
@@ -59,6 +74,7 @@ export const DemuxRender = () => {
     <div className={`flex flex-col w-full h-full `}>
       <h1>Demux Page</h1>
       <p>This is the demux page content.</p>
+      <span className="text-sm text-gray-500">FPS: {fps}</span>
       <div className={`flex w-full grow bg-purple-400`} ref={divRef}>
         <video
           className="w-full rounded-lg shadow-lg hidden"
