@@ -30,7 +30,7 @@ export default function Home() {
       requestAnimationFrame(drawCallback);
     };
     drawCallback();
-    
+
     return () => {
       rerun = false;
     };
@@ -40,16 +40,17 @@ export default function Home() {
     const interval = setInterval(() => {
       setCount((prev) => prev + 1);
     }, 100);
-    
+
     return () => clearInterval(interval);
-    
   }, []);
   return (
-    <><Head>
-      <title> Canvas Video Rendering Test {count}</title>
-    </Head><div
-      className={`${geistSans.className} ${geistMono.className} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
+    <>
+      <Head>
+        <title> Canvas Video Rendering Test {count}</title>
+      </Head>
+      <div
+        className={`${geistSans.className} ${geistMono.className} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
+      >
         <h1 className="text-4xl sm:text-6xl font-bold text-center">
           Canvas Video Rendering Test!
         </h1>
@@ -78,6 +79,7 @@ export default function Home() {
             ref={canvasRef}
           ></canvas>
         </main>
-      </div></>
+      </div>
+    </>
   );
 }

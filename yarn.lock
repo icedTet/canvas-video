@@ -2971,6 +2971,11 @@ uri-js@^4.2.2:
   dependencies:
     punycode "^2.1.0"
 
+web-demuxer@^3.0.1:
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/web-demuxer/-/web-demuxer-3.0.1.tgz#6e234b16e42a17069d8b44556c7a2221436dd2c7"
+  integrity sha512-y9QkEtGGTYq6jXQxGYzJOMp04deRDnbLOWuv1ECCQ1gTwFUfADS7I6hv0+LZoVvlIBiJeKW72NEdMxOCUYo6kw==
+
 which-boxed-primitive@^1.1.0, which-boxed-primitive@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/which-boxed-primitive/-/which-boxed-primitive-1.1.1.tgz#d76ec27df7fa165f18d5808374a5fe23c29b176e"

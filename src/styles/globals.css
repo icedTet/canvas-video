@@ -5,6 +5,10 @@
   --foreground: #171717;
 }
 
+#__next {
+  height: 100vh;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

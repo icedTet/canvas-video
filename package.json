@@ -12,7 +12,8 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "next": "15.3.4",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "web-demuxer": "^3.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
