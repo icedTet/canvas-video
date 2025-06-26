@@ -142,7 +142,7 @@ export const DemuxRender = () => {
         error: (e) => {
           console.error("video decoder error:", e);
           logDebug(`\nVideo decoder error: ${e}`);
-          console.error(`state`,decoder.state)
+          console.error(`state`, decoder.state);
           logDebug(`\nVideo decoder state: ${decoder.state}`);
         },
       });
@@ -188,6 +188,8 @@ export const DemuxRender = () => {
           decoder.decode(value);
         } catch (error) {
           logDebug(`\nError decoding video frame: ${error}`);
+          console.error(`state`, decoder.state);
+          logDebug(`\nVideo decoder state: ${decoder.state}`);
         }
 
         logDebug(`\nDecoded video frame`);
@@ -204,9 +206,7 @@ export const DemuxRender = () => {
         //   calculatedWaitTillNextFrame,
         //   "ms"
         // );
-        logDebug(
-            `\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`
-            );
+        logDebug(`\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`);
         if (calculatedWaitTillNextFrame > 0) {
           await new Promise((resolve) =>
             setTimeout(resolve, calculatedWaitTillNextFrame)
