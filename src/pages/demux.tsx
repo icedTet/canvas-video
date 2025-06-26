@@ -68,7 +68,7 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileURL = "nightmare.mp4"; // Replace with your file URL
+      const fileURL = "nightmare"; // Replace with your file URL
       const headerInfos = await fetch(fileURL, {
         method: "HEAD",
         mode: "cors",
@@ -114,7 +114,6 @@ export const DemuxRender = () => {
         displayWidth: 1920,
         displayHeight: 1080,
         description: ogDecoderConfig.description,
-        avc: { format: "annexb" },
       } as VideoDecoderConfig;
       setdebug(
         (debug) =>
