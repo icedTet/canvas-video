@@ -115,7 +115,7 @@ export const DemuxRender = () => {
       logDebug(`\nFinding video decoder config...`);
       const ogDecoderConfig = await demuxer.getDecoderConfig("video");
       const videoDecoderConfig = {
-        codec: "vp09.02.10.10.01.09.16.09.01",
+        codec: ogDecoderConfig.codec, //"vp09.02.10.10.01.09.16.09.01",
         width: 1920,
         height: 1080,
         displayWidth: 1920,
