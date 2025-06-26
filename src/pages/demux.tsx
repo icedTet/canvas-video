@@ -106,7 +106,15 @@ export const DemuxRender = () => {
         }`
       );
       setdebug((debug) => `${debug}\nFinding video decoder config...`);
-      const videoDecoderConfig = await demuxer.getDecoderConfig("video");
+      const videoDecoderConfig = {
+        codec: "avc1.64001E",
+        width: 1920,
+        height: 1080,
+        displayWidth: 1920,
+        displayHeight: 1080,
+        hardwareAcceleration: false,
+        avc: { format: "annexb" },
+      };
       setdebug(
         (debug) =>
           `${debug}\nVideo decoder config: ${JSON.stringify(
@@ -175,7 +183,6 @@ export const DemuxRender = () => {
         }
         try {
           decoder.decode(value);
-          
         } catch (error) {
           setdebug((debug) => `${debug}\nError decoding video frame: ${error}`);
         }
@@ -253,7 +260,7 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} />
       </div>
-            <p>{debug}</p>
+      <p>{debug}</p>
     </div>
   );
 };
