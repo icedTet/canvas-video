@@ -122,7 +122,7 @@ export const DemuxRender = () => {
         displayHeight: 1080,
         description: ogDecoderConfig.description,
         optimizeForLatency: true,
-        hardwareAcceleration: "prefer-hardware",
+        // hardwareAcceleration: "prefer-hardware",
       } as VideoDecoderConfig;
       logDebug(`\nVideo decoder config: ${JSON.stringify(videoDecoderConfig)}`);
       const decoder = new VideoDecoder({
