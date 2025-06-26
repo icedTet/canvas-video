@@ -73,7 +73,7 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileURL = "lyd.mp4"; // Replace with your file URL
+      const fileURL = "afterdark.mkv" 
       const headerInfos = await fetch(fileURL, {
         method: "HEAD",
         mode: "cors",
@@ -112,126 +112,9 @@ export const DemuxRender = () => {
           audio ? "present" : "not present"
         }`
       );
-      logDebug(`\nFinding video decoder config...`);
-      const videoDecoderConfig = await demuxer.getVideoConfig();
-      logDebug(`\nVideo decoder config: ${JSON.stringify(videoDecoderConfig)}`);
-      const decoder = new VideoDecoder({
-        output: (frame) => {
-          const scale = Math.min(
-            canvas.width / frame.displayWidth,
-            canvas.height / frame.displayHeight
-          );
-          ctx.drawImage(
-            frame,
-            0,
-            0,
-            frame.displayWidth * scale,
-            frame.displayHeight * scale
-          );
-          frame.close();
-        },
-
-        error: (e) => {
-          console.error("video decoder error:", e);
-          logDebug(`\nVideo decoder error: ${e}`);
-          console.error(`state`, decoder.state);
-          logDebug(`\nVideo decoder state: ${decoder.state}`);
-        },
-      });
-      logDebug(`\nConfiguring video decoder...`);
-
-      decoder.configure(videoDecoderConfig);
-
-      //   const audioDecoderConfig = await demuxer.getDecoderConfig("audio");
-      //   const audioDecoder = new AudioDecoder({
-      //     output: (audioFrame) => {
-      //       // Handle audio frame output if needed
-      //       // For now, we just log the audio frame
-      //       console.log("Audio frame received:", audioFrame);
-      //       audioFrame.close();
-      //     },
-      //     error: (e) => {
-      //       console.error("audio decoder error:", e);
-      //     },
-      //   });
-
-      const reader = demuxer.demux.read("video", 0, 0).getReader();
-      audio?.play();
-      let frameClock = 0;
-      const startTime = performance.now();
-      let lastTime = startTime;
-      let totalFrames = 0;
-      logDebug(`\nStarting video stream reading...`);
-      while (true) {
-        // Read the next chunk of video data
-        logDebug(`\nReading next video chunk...`);
-        // console.log("Reading next
-        const { done, value } = await reader.read();
-        if (value) {
-          logDebug(`\nRead video chunk of size: ${value.byteLength} bytes`);
-        } else {
-          logDebug(`\nNo more video data to read`);
-        }
-        if (done) {
-          console.log("Video stream reading finished");
-          break;
-        }
-        logDebug(`\nVideo predecoder state: ${decoder.state}`);
-        try {
-          decoder.decode(value);
-        } catch (error) {
-          logDebug(`\nError decoding video frame: ${error}`);
-          console.error(`state`, decoder.state);
-          logDebug(`\nVideo decoder state: ${decoder.state}`);
-        }
-
-        logDebug(`\nDecoded video frame`);
-        // figure out the correct wait time to maintain the FPS
-        // if the current time is less than the start time, we need to wait
-        const whereWeAreSupposedToBe =
-          (frameClock + 1) * (1000 / framesPerSecond) + lastTime;
-        const whereWeAreRightNow = performance.now();
-        const calculatedWaitTillNextFrame =
-          whereWeAreSupposedToBe - whereWeAreRightNow;
-
-        // console.log(
-        //   "Waiting for next frame:",
-        //   calculatedWaitTillNextFrame,
-        //   "ms"
-        // );
-        logDebug(`\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`);
-        if (calculatedWaitTillNextFrame > 0) {
-          await new Promise((resolve) => requestAnimationFrame(resolve));
-        }
-
-        // if (currentTime - lastTime >= 1000) {
-        //   setFps(frameClock / ((currentTime - lastTime) / 1000));
-        //   lastTime = currentTime;
-        //   frameClock = 0;
-        // }
-
-        frameClock++;
-        totalFrames++;
-        logDebug(`\nFrame ${frameClock} processed`);
-        if (frameClock % 60 === 0) {
-          console.log(
-            `Decoded 60 frames, within ${performance.now() - lastTime} ms`
-          );
-          console.log(
-            "Our FPS:",
-            frameClock / ((performance.now() - lastTime) / 1000)
-          );
-          setFps(frameClock / ((performance.now() - lastTime) / 1000));
-          setCurrentFrameCount(totalFrames);
-          setExpectedFrameCount(
-            Math.floor(
-              (performance.now() - startTime) / (1000 / framesPerSecond)
-            )
-          );
-          lastTime = performance.now();
-          frameClock = 0;
-        }
-      }
+      await demuxer.setCanvas(canvas);
+      demuxer.render();
+      audio?.play()
     })();
   }, []);
 
@@ -248,9 +131,14 @@ export const DemuxRender = () => {
         {12730330.0 / (1000 * 1000)} MB
       </span>
 
-      <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
+      <div
+        className={`flex w-full grow bg-purple-400 relative`}
+        ref={divRef}
+        suppressHydrationWarning={true}
+      >
         <video
-          className="w-full rounded-lg shadow-lg opacity-50 absolute "
+          suppressHydrationWarning={true}
+          className="w-full rounded-lg shadow-lg opacity-0 absolute invert-100"
           controls
           content="true"
           playsInline
@@ -259,7 +147,7 @@ export const DemuxRender = () => {
         >
           Your browser does not support the video tag.
         </video>
-        <canvas ref={canvasRef} />
+        <canvas ref={canvasRef} suppressHydrationWarning={true}/>
       </div>
       <div className={`flex flex-col`}>
         {debug.split("\n").map((msg) => (
