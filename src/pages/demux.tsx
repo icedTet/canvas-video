@@ -73,7 +73,7 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileURL = "lyd.mkv"; // Replace with your file URL
+      const fileURL = "lyd.mp4"; // Replace with your file URL
       const headerInfos = await fetch(fileURL, {
         method: "HEAD",
         mode: "cors",
