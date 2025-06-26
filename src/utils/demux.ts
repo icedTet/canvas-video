@@ -12,6 +12,7 @@ export class Demuxer {
   frameCount: number = 0;
   maxCachedFrames: number = 30;
   cacheFrames: VideoFrame[] = [];
+  onerror?: (s: string) => void;
   viddone = false;
   constructor() {
     this.demux = new WebDemuxer({
@@ -121,11 +122,11 @@ export class Demuxer {
       if (this.cacheFrames.length < this.maxCachedFrames) {
         this.frameLock = 0;
       }
-    //   console.log(
-    //     performance.now(),
-    //     frameTime,
-    //     (1000 * this.fpsDenominator) / this.fpsNumerator
-    //   );
+      //   console.log(
+      //     performance.now(),
+      //     frameTime,
+      //     (1000 * this.fpsDenominator) / this.fpsNumerator
+      //   );
       if (frame) {
         await this.renderVideoFrame(frame);
         frameCount++;
@@ -136,7 +137,7 @@ export class Demuxer {
         // If no frame is available, wait for the next frame time
         while (this.cacheFrames.length === 0 && !this.viddone) {
           await new Promise((resolve) => requestAnimationFrame(resolve));
-        //   console.log("Waiting for next frame...");
+          //   console.log("Waiting for next frame...");
           this.frameLock = 0; // Release frame lock if waiting for next frame
         }
       }
@@ -163,7 +164,12 @@ export class Demuxer {
         break;
       }
       const frame = value as EncodedVideoChunk;
-      this.decoder.decode(value);
+      try {
+        this.decoder.decode(value);
+      } catch (error) {
+        this.onerror && this.onerror(`DC error ${error}`);
+        this.onerror && this.onerror(this.decoder.state);
+      }
       lockout--;
       if (lockout <= 0) {
         await new Promise((resolve) => requestAnimationFrame(resolve));
