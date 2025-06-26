@@ -1,6 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import { Demuxer } from "../utils/demux";
-
+async function download(
+  url: string,
+  setFileProgress: (progress: number) => void,
+  size: number,
+  fileName: string,
+  contentType: string
+) {
+  const file = await fetch(url, {
+    method: "GET",
+    mode: "cors",
+    credentials: "omit",
+  });
+  const reader = file.body?.getReader();
+  let receivedLength = 0;
+  const chunks = [];
+  while (reader) {
+    // done is true for the last chunk
+    // value is Uint8Array of the chunk bytes
+    const { done, value } = await reader.read();
+    if (done) {
+      //   console.log('done', attachment.title))
+      break;
+    }
+    if (!value?.length) continue;
+    chunks.push(value);
+    receivedLength += value.length;
+    setFileProgress(receivedLength);
+    // console.log(`Received ${value.length} bytes`)
+  }
+  // console.log('combining', chunks.length)
+  let chunksAll = new Uint8Array(receivedLength); // (4.1)
+  let position = 0;
+  for (let chunk of chunks) {
+    chunksAll.set(chunk, position); // (4.2)
+    position += chunk.length;
+  }
+  //   console.log('combined', chunksAll.length))
+  return new File([chunksAll], fileName || "downloaded_file", {
+    type: contentType,
+  });
+}
 export const DemuxRender = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const divRef = useRef<HTMLDivElement | null>(null);
@@ -9,6 +49,7 @@ export const DemuxRender = () => {
   const [fps, setFps] = useState(0);
   const [sourceFPS, setSourceFPS] = useState(0);
   const [urlBlob, setUrlBlob] = useState(null as string | null);
+  const [progress, setprogress] = useState(0 as number);
   useEffect(() => {
     if (!fileBlob) return;
     const url = URL.createObjectURL(fileBlob);
@@ -26,7 +67,20 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileBlob = await fetch("nightmare.mp4").then((res) => res.blob());
+      const fileURL = "nightmare.mp4";
+      const headerInfos = await fetch(fileURL, {
+        method: "HEAD",
+        mode: "cors",
+        credentials: "omit",
+      });
+      const fileBlob = await download(
+        fileURL,
+        (p) => setprogress(p),
+        ~~(headerInfos.headers.get("content-length") ?? 0),
+        fileURL,
+        headerInfos.headers.get("content-type") || "video/mp4"
+      );
+      console.log("File downloaded:", fileBlob);
       setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
       await demuxer.load(new File([fileBlob], "nightmare.mp4"));
@@ -43,7 +97,7 @@ export const DemuxRender = () => {
             Number(s.avg_frame_rate.split("/")[0]) /
             Number(s.avg_frame_rate.split("/")[1]);
         });
-        setSourceFPS(framesPerSecond);
+      setSourceFPS(framesPerSecond);
       const audio = videoRef.current;
       console.log(
         `Video FPS: ${framesPerSecond}, Audio: ${
@@ -146,7 +200,12 @@ export const DemuxRender = () => {
     <div className={`flex flex-col w-full h-full `}>
       <h1>Demux Page</h1>
       <p>This is the demux page content.</p>
-      <span className="text-sm text-gray-500">FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}</span>
+      <span className="text-sm text-gray-500">
+        FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}
+      </span>
+      <span className="text-sm text-gray-500">
+        Download Progress: {(progress/(1000* 1000)).toFixed(2)} MB / {24200330.00/ (1000 * 1000)} MB
+      </span>
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
           className="w-full rounded-lg shadow-lg opacity-50 absolute hue-rotate-90"
