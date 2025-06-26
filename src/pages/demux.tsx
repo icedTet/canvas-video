@@ -184,6 +184,7 @@ export const DemuxRender = () => {
           console.log("Video stream reading finished");
           break;
         }
+        logDebug(`\nVideo predecoder state: ${decoder.state}`);
         try {
           decoder.decode(value);
         } catch (error) {
