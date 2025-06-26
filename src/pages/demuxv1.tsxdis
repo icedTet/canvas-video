@@ -88,9 +88,9 @@ export const DemuxRender = () => {
       );
       console.log("File downloaded:", fileBlob);
       setFileBlob(fileBlob);
-      const demuxer = new Demuxer();
+      const demuxer = Demuxer.getInstance().getDemuxer();
       await demuxer.load(new File([fileBlob], "file"));
-      const mp4Info = await demuxer.demux.getMediaInfo();
+      const mp4Info = await demuxer.getMediaInfo();
       console.log("MP4 Info:", mp4Info);
       logDebug(`\nMP4 Info: ${JSON.stringify(mp4Info, null, 2)}`);
       let framesPerSecond = 0;
@@ -113,7 +113,14 @@ export const DemuxRender = () => {
         }`
       );
       logDebug(`\nFinding video decoder config...`);
-      const videoDecoderConfig = await demuxer.getVideoConfig();
+      const ogDecoderConfig = await demuxer.getDecoderConfig("video");
+      const videoDecoderConfig = {
+        codec: ogDecoderConfig.codec, //"vp09.02.10.10.01.09.16.09.01",
+        width: 1920,
+        height: 1080,
+        description: ogDecoderConfig.description,
+        optimizeForLatency: true,
+      } as VideoDecoderConfig;
       logDebug(`\nVideo decoder config: ${JSON.stringify(videoDecoderConfig)}`);
       const decoder = new VideoDecoder({
         output: (frame) => {
@@ -155,7 +162,7 @@ export const DemuxRender = () => {
       //     },
       //   });
 
-      const reader = demuxer.demux.read("video", 0, 0).getReader();
+      const reader = demuxer.read("video", 0, 0).getReader();
       audio?.play();
       let frameClock = 0;
       const startTime = performance.now();
@@ -201,7 +208,9 @@ export const DemuxRender = () => {
         // );
         logDebug(`\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`);
         if (calculatedWaitTillNextFrame > 0) {
-          await new Promise((resolve) => requestAnimationFrame(resolve));
+          await new Promise((resolve) =>
+            setTimeout(resolve, calculatedWaitTillNextFrame)
+          );
         }
 
         // if (currentTime - lastTime >= 1000) {
@@ -238,7 +247,7 @@ export const DemuxRender = () => {
   return (
     <div className={`flex flex-col w-full h-full `}>
       <h1>Demux Page</h1>
-      <p>This is the demux page content. v.1.1</p>
+      <p>This is the demux page content. v.1</p>
       <span className="text-sm text-gray-500">
         FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}; Frame Count:{" "}
         {currentFrameCount} / Expected: {expectedFrameCount}
