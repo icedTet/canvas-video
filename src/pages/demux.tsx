@@ -250,7 +250,7 @@ export const DemuxRender = () => {
   return (
     <div className={`flex flex-col w-full h-full `}>
       <h1>Demux Page</h1>
-      <p>This is the demux page content.</p>
+      <p>This is the demux page content. v.1</p>
       <span className="text-sm text-gray-500">
         FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}; Frame Count:{" "}
         {currentFrameCount} / Expected: {expectedFrameCount}
