@@ -173,7 +173,13 @@ export const DemuxRender = () => {
           console.log("Video stream reading finished");
           break;
         }
-        decoder.decode(value);
+        try {
+          decoder.decode(value);
+          
+        } catch (error) {
+          setdebug((debug) => `${debug}\nError decoding video frame: ${error}`);
+        }
+
         setdebug((debug) => `${debug}\nDecoded video frame`);
         // figure out the correct wait time to maintain the FPS
         // if the current time is less than the start time, we need to wait
@@ -188,7 +194,10 @@ export const DemuxRender = () => {
         //   calculatedWaitTillNextFrame,
         //   "ms"
         // );
-        setdebug((debug) => `${debug}\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`);
+        setdebug(
+          (debug) =>
+            `${debug}\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`
+        );
         if (calculatedWaitTillNextFrame > 0) {
           await new Promise((resolve) =>
             setTimeout(resolve, calculatedWaitTillNextFrame)
