@@ -68,7 +68,7 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileURL = "nightmare.mp4";
+      const fileURL = "nightmare.avi";
       const headerInfos = await fetch(fileURL, {
         method: "HEAD",
         mode: "cors",
@@ -84,7 +84,7 @@ export const DemuxRender = () => {
       console.log("File downloaded:", fileBlob);
       setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
-      await demuxer.load(new File([fileBlob], "nightmare.mp4"));
+      await demuxer.load(new File([fileBlob], "nightmare.avi"));
       const mp4Info = await demuxer.getMediaInfo();
       console.log("MP4 Info:", mp4Info);
       let framesPerSecond = 0;
@@ -237,7 +237,7 @@ export const DemuxRender = () => {
       </span>
       <span className="text-sm text-gray-500">
         Download Progress: {(progress / (1000 * 1000)).toFixed(2)} MB /{" "}
-        {24200330.0 / (1000 * 1000)} MB
+        {12730330.0 / (1000 * 1000)} MB
       </span>
       <p>{debug}</p>
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
