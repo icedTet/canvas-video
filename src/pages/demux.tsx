@@ -62,6 +62,9 @@ export const DemuxRender = () => {
     };
   }, [fileBlob]);
   useEffect(() => {
+    const logDebug = (message: string) => {
+      setdebug((prev) => `${prev}\n${message}`);
+    };
     // Initialize the canvas and set its dimensions
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -86,9 +89,10 @@ export const DemuxRender = () => {
       console.log("File downloaded:", fileBlob);
       setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
-      await demuxer.load(new File([fileBlob], "nightmare.mp4"));
+      await demuxer.load(new File([fileBlob], "file"));
       const mp4Info = await demuxer.getMediaInfo();
       console.log("MP4 Info:", mp4Info);
+      logDebug(`\nMP4 Info: ${JSON.stringify(mp4Info, null, 2)}`);
       let framesPerSecond = 0;
       mp4Info.streams
         .filter((s) => s.codec_type_string === "video")
@@ -96,6 +100,7 @@ export const DemuxRender = () => {
           console.log(
             `Stream ${s.index}: ${s.codec_type_string} - ${s.codec_name} (${s.width}x${s.height})`
           );
+          console.log(s.codec_string);
           framesPerSecond =
             Number(s.avg_frame_rate.split("/")[0]) /
             Number(s.avg_frame_rate.split("/")[1]);
@@ -107,7 +112,7 @@ export const DemuxRender = () => {
           audio ? "present" : "not present"
         }`
       );
-      setdebug((debug) => `${debug}\nFinding video decoder config...`);
+      logDebug(`\nFinding video decoder config...`);
       const ogDecoderConfig = await demuxer.getDecoderConfig("video");
       const videoDecoderConfig = {
         codec: ogDecoderConfig.codec,
@@ -117,12 +122,7 @@ export const DemuxRender = () => {
         displayHeight: 1080,
         description: ogDecoderConfig.description,
       } as VideoDecoderConfig;
-      setdebug(
-        (debug) =>
-          `${debug}\nVideo decoder config: ${JSON.stringify(
-            videoDecoderConfig
-          )}`
-      );
+      logDebug(`\nVideo decoder config: ${JSON.stringify(videoDecoderConfig)}`);
       const decoder = new VideoDecoder({
         output: (frame) => {
           const scale = Math.min(
@@ -141,9 +141,10 @@ export const DemuxRender = () => {
 
         error: (e) => {
           console.error("video decoder error:", e);
+          console.error(`state`,decoder.state)
         },
       });
-      setdebug((debug) => `${debug}\nConfiguring video decoder...`);
+      logDebug(`\nConfiguring video decoder...`);
 
       decoder.configure(videoDecoderConfig);
 
@@ -166,18 +167,16 @@ export const DemuxRender = () => {
       const startTime = performance.now();
       let lastTime = startTime;
       let totalFrames = 0;
-      setdebug((debug) => `${debug}\nStarting video stream reading...`);
+      logDebug(`\nStarting video stream reading...`);
       while (true) {
         // Read the next chunk of video data
-        setdebug((debug) => `${debug}\nReading next video chunk...`);
+        logDebug(`\nReading next video chunk...`);
         // console.log("Reading next
         const { done, value } = await reader.read();
         if (value) {
-          setdebug(
-            (debug) => `${debug}\nRead ${value.byteLength} bytes of video data`
-          );
+          logDebug(`\nRead video chunk of size: ${value.byteLength} bytes`);
         } else {
-          setdebug((debug) => `${debug}\nNo more video data to read`);
+          logDebug(`\nNo more video data to read`);
         }
         if (done) {
           console.log("Video stream reading finished");
@@ -186,10 +185,10 @@ export const DemuxRender = () => {
         try {
           decoder.decode(value);
         } catch (error) {
-          setdebug((debug) => `${debug}\nError decoding video frame: ${error}`);
+          logDebug(`\nError decoding video frame: ${error}`);
         }
 
-        setdebug((debug) => `${debug}\nDecoded video frame`);
+        logDebug(`\nDecoded video frame`);
         // figure out the correct wait time to maintain the FPS
         // if the current time is less than the start time, we need to wait
         const whereWeAreSupposedToBe =
@@ -203,10 +202,9 @@ export const DemuxRender = () => {
         //   calculatedWaitTillNextFrame,
         //   "ms"
         // );
-        setdebug(
-          (debug) =>
-            `${debug}\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`
-        );
+        logDebug(
+            `\nWaiting for next frame: ${calculatedWaitTillNextFrame} ms`
+            );
         if (calculatedWaitTillNextFrame > 0) {
           await new Promise((resolve) =>
             setTimeout(resolve, calculatedWaitTillNextFrame)
@@ -221,7 +219,7 @@ export const DemuxRender = () => {
 
         frameClock++;
         totalFrames++;
-        setdebug((debug) => `${debug}\nFrame ${frameClock} processed`);
+        logDebug(`\nFrame ${frameClock} processed`);
         if (frameClock % 60 === 0) {
           console.log(
             `Decoded 60 frames, within ${performance.now() - lastTime} ms`
@@ -233,7 +231,9 @@ export const DemuxRender = () => {
           setFps(frameClock / ((performance.now() - lastTime) / 1000));
           setCurrentFrameCount(totalFrames);
           setExpectedFrameCount(
-            Math.floor((performance.now() - startTime) / (1000 / framesPerSecond))
+            Math.floor(
+              (performance.now() - startTime) / (1000 / framesPerSecond)
+            )
           );
           lastTime = performance.now();
           frameClock = 0;
@@ -268,7 +268,11 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} />
       </div>
-      <p>{debug}</p>
+      <div className={`flex flex-col`}>
+        {debug.split("\n").map((msg) => (
+          <span>{msg}</span>
+        ))}
+      </div>
     </div>
   );
 };
