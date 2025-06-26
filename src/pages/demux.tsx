@@ -68,7 +68,7 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileURL = "mcad.webm";
+      const fileURL = "nightmare.mp4"; // Replace with your file URL
       const headerInfos = await fetch(fileURL, {
         method: "HEAD",
         mode: "cors",
@@ -84,7 +84,7 @@ export const DemuxRender = () => {
       console.log("File downloaded:", fileBlob);
       setFileBlob(fileBlob);
       const demuxer = Demuxer.getInstance().getDemuxer();
-      await demuxer.load(new File([fileBlob], "nightmare.avi"));
+      await demuxer.load(new File([fileBlob], "nightmare.mp4"));
       const mp4Info = await demuxer.getMediaInfo();
       console.log("MP4 Info:", mp4Info);
       let framesPerSecond = 0;
@@ -106,15 +106,16 @@ export const DemuxRender = () => {
         }`
       );
       setdebug((debug) => `${debug}\nFinding video decoder config...`);
+      const ogDecoderConfig = await demuxer.getDecoderConfig("video");
       const videoDecoderConfig = {
-        codec: "avc1.64001E",
+        codec: ogDecoderConfig.codec,
         width: 1920,
         height: 1080,
         displayWidth: 1920,
         displayHeight: 1080,
-        hardwareAcceleration: false,
+        description: ogDecoderConfig.description,
         avc: { format: "annexb" },
-      };
+      } as VideoDecoderConfig;
       setdebug(
         (debug) =>
           `${debug}\nVideo decoder config: ${JSON.stringify(
@@ -249,7 +250,7 @@ export const DemuxRender = () => {
 
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
-          className="w-full rounded-lg shadow-lg opacity-50 absolute hue-rotate-90"
+          className="w-full rounded-lg shadow-lg opacity-50 absolute "
           controls
           content="true"
           playsInline
