@@ -239,7 +239,7 @@ export const DemuxRender = () => {
         Download Progress: {(progress / (1000 * 1000)).toFixed(2)} MB /{" "}
         {12730330.0 / (1000 * 1000)} MB
       </span>
-      <p>{debug}</p>
+
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
           className="w-full rounded-lg shadow-lg opacity-50 absolute hue-rotate-90"
@@ -253,6 +253,7 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} />
       </div>
+            <p>{debug}</p>
     </div>
   );
 };
