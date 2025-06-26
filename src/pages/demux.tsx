@@ -51,6 +51,8 @@ export const DemuxRender = () => {
   const [urlBlob, setUrlBlob] = useState(null as string | null);
   const [progress, setprogress] = useState(0 as number);
   const [debug, setdebug] = useState("");
+  const [currentFrameCount, setCurrentFrameCount] = useState(0);
+  const [expectedFrameCount, setExpectedFrameCount] = useState(0);
   useEffect(() => {
     if (!fileBlob) return;
     const url = URL.createObjectURL(fileBlob);
@@ -160,12 +162,12 @@ export const DemuxRender = () => {
 
       const reader = demuxer.read("video", 0, 0).getReader();
       audio?.play();
-      let frameCount = 0;
-      let lastTime = performance.now();
-
+      let frameClock = 0;
+      const startTime = performance.now();
+      let lastTime = startTime;
+      let totalFrames = 0;
       setdebug((debug) => `${debug}\nStarting video stream reading...`);
       while (true) {
-        const startTime = performance.now();
         // Read the next chunk of video data
         setdebug((debug) => `${debug}\nReading next video chunk...`);
         // console.log("Reading next
@@ -191,7 +193,7 @@ export const DemuxRender = () => {
         // figure out the correct wait time to maintain the FPS
         // if the current time is less than the start time, we need to wait
         const whereWeAreSupposedToBe =
-          (frameCount + 1) * (1000 / framesPerSecond) + lastTime;
+          (frameClock + 1) * (1000 / framesPerSecond) + lastTime;
         const whereWeAreRightNow = performance.now();
         const calculatedWaitTillNextFrame =
           whereWeAreSupposedToBe - whereWeAreRightNow;
@@ -212,24 +214,29 @@ export const DemuxRender = () => {
         }
 
         // if (currentTime - lastTime >= 1000) {
-        //   setFps(frameCount / ((currentTime - lastTime) / 1000));
+        //   setFps(frameClock / ((currentTime - lastTime) / 1000));
         //   lastTime = currentTime;
-        //   frameCount = 0;
+        //   frameClock = 0;
         // }
 
-        frameCount++;
-        setdebug((debug) => `${debug}\nFrame ${frameCount} processed`);
-        if (frameCount % 60 === 0) {
+        frameClock++;
+        totalFrames++;
+        setdebug((debug) => `${debug}\nFrame ${frameClock} processed`);
+        if (frameClock % 60 === 0) {
           console.log(
             `Decoded 60 frames, within ${performance.now() - lastTime} ms`
           );
           console.log(
             "Our FPS:",
-            frameCount / ((performance.now() - lastTime) / 1000)
+            frameClock / ((performance.now() - lastTime) / 1000)
           );
-          setFps(frameCount / ((performance.now() - lastTime) / 1000));
+          setFps(frameClock / ((performance.now() - lastTime) / 1000));
+          setCurrentFrameCount(totalFrames);
+          setExpectedFrameCount(
+            Math.floor((performance.now() - startTime) / (1000 / framesPerSecond))
+          );
           lastTime = performance.now();
-          frameCount = 0;
+          frameClock = 0;
         }
       }
     })();
@@ -240,7 +247,8 @@ export const DemuxRender = () => {
       <h1>Demux Page</h1>
       <p>This is the demux page content.</p>
       <span className="text-sm text-gray-500">
-        FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}
+        FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}; Frame Count:{" "}
+        {currentFrameCount} / Expected: {expectedFrameCount}
       </span>
       <span className="text-sm text-gray-500">
         Download Progress: {(progress / (1000 * 1000)).toFixed(2)} MB /{" "}
