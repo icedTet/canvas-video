@@ -68,28 +68,28 @@ export class Demuxer {
       this.decoder.configure(videoDecoderConfig);
     }
   }
-  async renderVideo() {
-    if (!this.decoder) {
-      throw new Error("Decoder not initialized");
-    }
-    if (!this.demux) {
-      throw new Error("Demuxer not initialized");
-    }
-    if (!this.fpsNumerator || !this.fpsDenominator) {
-      throw new Error("FPS not set");
-    }
-    let startTime = performance.now();
-    const reader = this.demux.read("video", 0, 0).getReader();
-    let frameClock = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) {
-        console.log("No more frames to read");
-        break;
-      }
-      const frame = value as EncodedVideoChunk;
-      this.decoder.decode(value);
+//   async renderVideo() {
+//     if (!this.decoder) {
+//       throw new Error("Decoder not initialized");
+//     }
+//     if (!this.demux) {
+//       throw new Error("Demuxer not initialized");
+//     }
+//     if (!this.fpsNumerator || !this.fpsDenominator) {
+//       throw new Error("FPS not set");
+//     }
+//     let startTime = performance.now();
+//     const reader = this.demux.read("video", 0, 0).getReader();
+//     let frameClock = 0;
+//     while (true) {
+//       const { done, value } = await reader.read();
+//       if (done) {
+//         console.log("No more frames to read");
+//         break;
+//       }
+//       const frame = value as EncodedVideoChunk;
+//       this.decoder.decode(value);
       
-    }
-  }
+//     }
+//   }
 }
