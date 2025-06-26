@@ -50,6 +50,7 @@ export const DemuxRender = () => {
   const [sourceFPS, setSourceFPS] = useState(0);
   const [urlBlob, setUrlBlob] = useState(null as string | null);
   const [progress, setprogress] = useState(0 as number);
+  const [debug, setdebug] = useState("");
   useEffect(() => {
     if (!fileBlob) return;
     const url = URL.createObjectURL(fileBlob);
@@ -104,7 +105,14 @@ export const DemuxRender = () => {
           audio ? "present" : "not present"
         }`
       );
+      setdebug((debug) => `${debug}\nFinding video decoder config...`);
       const videoDecoderConfig = await demuxer.getDecoderConfig("video");
+      setdebug(
+        (debug) =>
+          `${debug}\nVideo decoder config: ${JSON.stringify(
+            videoDecoderConfig
+          )}`
+      );
       const decoder = new VideoDecoder({
         output: (frame) => {
           const scale = Math.min(
@@ -125,30 +133,42 @@ export const DemuxRender = () => {
           console.error("video decoder error:", e);
         },
       });
+      setdebug((debug) => `${debug}\nConfiguring video decoder...`);
 
       decoder.configure(videoDecoderConfig);
 
-      const audioDecoderConfig = await demuxer.getDecoderConfig("audio");
-      const audioDecoder = new AudioDecoder({
-        output: (audioFrame) => {
-          // Handle audio frame output if needed
-          // For now, we just log the audio frame
-          console.log("Audio frame received:", audioFrame);
-          audioFrame.close();
-        },
-        error: (e) => {
-          console.error("audio decoder error:", e);
-        },
-      });
+      //   const audioDecoderConfig = await demuxer.getDecoderConfig("audio");
+      //   const audioDecoder = new AudioDecoder({
+      //     output: (audioFrame) => {
+      //       // Handle audio frame output if needed
+      //       // For now, we just log the audio frame
+      //       console.log("Audio frame received:", audioFrame);
+      //       audioFrame.close();
+      //     },
+      //     error: (e) => {
+      //       console.error("audio decoder error:", e);
+      //     },
+      //   });
 
       const reader = demuxer.read("video", 0, 0).getReader();
       audio?.play();
       let frameCount = 0;
       let lastTime = performance.now();
 
+      setdebug((debug) => `${debug}\nStarting video stream reading...`);
       while (true) {
         const startTime = performance.now();
+        // Read the next chunk of video data
+        setdebug((debug) => `${debug}\nReading next video chunk...`);
+        // console.log("Reading next
         const { done, value } = await reader.read();
+        if (value) {
+          setdebug(
+            (debug) => `${debug}\nRead ${value.byteLength} bytes of video data`
+          );
+        } else {
+          setdebug((debug) => `${debug}\nNo more video data to read`);
+        }
         if (done) {
           console.log("Video stream reading finished");
           break;
@@ -204,8 +224,10 @@ export const DemuxRender = () => {
         FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}
       </span>
       <span className="text-sm text-gray-500">
-        Download Progress: {(progress/(1000* 1000)).toFixed(2)} MB / {24200330.00/ (1000 * 1000)} MB
+        Download Progress: {(progress / (1000 * 1000)).toFixed(2)} MB /{" "}
+        {24200330.0 / (1000 * 1000)} MB
       </span>
+      <p>{debug}</p>
       <div className={`flex w-full grow bg-purple-400 relative`} ref={divRef}>
         <video
           className="w-full rounded-lg shadow-lg opacity-50 absolute hue-rotate-90"
