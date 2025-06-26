@@ -68,7 +68,7 @@ export const DemuxRender = () => {
     canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
     canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
     (async () => {
-      const fileURL = "nightmare.avi";
+      const fileURL = "mcad.webm";
       const headerInfos = await fetch(fileURL, {
         method: "HEAD",
         mode: "cors",
@@ -79,7 +79,7 @@ export const DemuxRender = () => {
         (p) => setprogress(p),
         ~~(headerInfos.headers.get("content-length") ?? 0),
         fileURL,
-        headerInfos.headers.get("content-type") || "video/mp4"
+        headerInfos.headers.get("content-type") || "video/webm"
       );
       console.log("File downloaded:", fileBlob);
       setFileBlob(fileBlob);
