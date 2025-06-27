@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Demuxer } from "../utils/demux/demux";
-import { DemuxVideo } from "../components/DemuxVideo";
+import dynamic from "next/dynamic";
+const LazyDemux = dynamic(() => import("../components/LazyDemux"), {
+  ssr: false,
+});
 async function download(
   url: string,
   setFileProgress: (progress: number) => void,
@@ -150,7 +152,7 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} suppressHydrationWarning={true} />
       </div> */}
-      <DemuxVideo src={`${globalThis?.location?.origin}/nightmare.mp4`} />
+      <LazyDemux src={`${globalThis?.location?.origin}/afterdark.mkv`} />
       <div className={`flex flex-col`}>
         {debug.split("\n").map((msg) => (
           <span>{msg}</span>

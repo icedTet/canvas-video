@@ -1,80 +1,106 @@
+import { AVSeekFlag, WebDemuxer } from "web-demuxer";
+import { MovieRenderer } from "./MovieRenderer";
 import { RingBuffer } from "ringbuf.js";
-import { Demuxer } from "./demux";
-
 const DATA_BUFFER_DECODE_TARGET_DURATION = 0.3;
 const DATA_BUFFER_DURATION = 0.6;
 const DECODER_QUEUE_SIZE_MAX = 5;
-const ENABLE_DEBUG_LOGGING = true;
-
-function debugLog(msg: any) {
-  if (!ENABLE_DEBUG_LOGGING) {
-    return;
-  }
-  console.debug(msg);
-}
-
+const logAudio = true; // Set to true to enable audio logging
 export class AudioRenderer {
-  fillInProgress: boolean;
-  playing: boolean;
-  decoder: AudioDecoder;
-  demuxer: Demuxer;
-  sampleRate: number;
-  channelCount: number;
-  ringbuffer!: RingBuffer;
-  interleavingBuffers: Float32Array[] = [];
-  init_resolver: ((value?: unknown) => void) | null;
-  ready: Promise<void> | null = null;
-  audioConfig: AudioDecoderConfig | null = null;
-  audioContext: AudioContext | null = null;
-  audioWorkletNode: AudioWorkletNode | null = null;
-  volumeGainNode!: GainNode;
-  constructor(demuxer: Demuxer, audioConfig: AudioDecoderConfig) {
-    this.demuxer = demuxer;
-    this.fillInProgress = false;
-    this.playing = false;
-    this.decoder = null as any; // Will be initialized in initialize()
-    this.audioConfig = audioConfig;
-    this.sampleRate = audioConfig.sampleRate;
-    this.channelCount = audioConfig.numberOfChannels;
-    this.ringbuffer = null as any; // Will be initialized in initialize()
-    this.interleavingBuffers = [];
-    this.init_resolver = null;
-    this.audioContext = null;
-    this.audioWorkletNode = null;
-    this.initialize();
-  }
-  async waitForReady() {
-    if (!this.ready) {
-      await new Promise((r) => setTimeout(r, 100));
-    }
-    return this.ready;
-  }
-  async initialize() {
-    this.fillInProgress = false;
-    this.playing = false;
+  parent: MovieRenderer; // Parent MovieRenderer instance
+  audioDemuxer: WebDemuxer; // Audio demuxer instance
+  audioDecoderConfig: AudioDecoderConfig | null = null; // Audio decoder configuration
+  audioDecoder!: AudioDecoder; // Audio decoder instance
+  audioContext: AudioContext | null = null; // Audio context for rendering audio frames
+  private maxQueuedAudioChunks: number = 3; // Maximum number of audio chunks to queue. After this, audio decoding will pause until the queue has space.
+  private queuedChunks: EncodedAudioChunk[] = []; // Queue for audio chunks
 
-    this.decoder = new AudioDecoder({
+  audioReader!: ReadableStreamDefaultReader<EncodedAudioChunk>; // Reader for the audio stream
+  sampleRate?: number; // Sample rate for the audio context, initialized to 44100 Hz
+  channelCount?: number; // Number of audio channels, initialized to 2 (stereo)
+  ringbuffer!: RingBuffer; // Ring buffer for audio data
+  interleavingBuffers: Float32Array[] = []; // Buffers for interleaving audio data
+  init_resolver!: ((value: void) => void) | null; // Resolver for initialization promise
+  ready!: Promise<void>; // Promise that resolves when the audio renderer is ready
+  fillInProgress: boolean = false; // Flag indicating if filling the buffer is in progress
+  playing: boolean = false; // Flag indicating if audio is currently playing
+  audioWorkletNode!: AudioWorkletNode | null; // Audio worklet node for processing audio data
+  volumeGainNode!: GainNode;
+  loaded: boolean = false; // Whether the audio demuxer has been loaded
+  constructor(parent: MovieRenderer) {
+    this.parent = parent;
+    this.audioDemuxer = new WebDemuxer({
+      wasmFilePath: `${globalThis.document.location.origin}/dmux/web-demuxer.wasm`,
+    });
+  }
+  aLog(message: any) {
+    if (!logAudio) return; // If logging is disabled, do not log
+    this.parent.log(`[AudioRenderer] ${message}`);
+  }
+  async init() {
+    await this.audioDemuxer
+      .load(this.parent.file)
+      .catch((e) => {
+        this.aLog(`Error loading audio demuxer: ${e}`);
+      })
+      .then((e) => {
+        this.aLog("**Audio demuxer loaded successfully**");
+      });
+
+    this.aLog("Audio demuxer initialized");
+    await this.initAudioContext();
+    await this.initAudioDecoder();
+    this.aLog("AudioRenderer is ready");
+    this.loaded = true;
+  }
+  async getAudioDecoderConfig(): Promise<AudioDecoderConfig> {
+    if (this.audioDecoderConfig) {
+      return this.audioDecoderConfig;
+    }
+    const mediaInfo = await this.parent.getMediaInfo();
+    const audioStream = mediaInfo.streams.find(
+      (s) => s.codec_type_string === "audio"
+    );
+    if (!audioStream) {
+      throw new Error("No audio stream found in media info");
+    }
+    this.audioDecoderConfig = {
+      codec: audioStream.codec_string,
+      sampleRate: audioStream.sample_rate,
+      numberOfChannels: audioStream.channels,
+      description: audioStream.extradata,
+    };
+    this.channelCount = audioStream.channels;
+    this.sampleRate = audioStream.sample_rate;
+
+    return this.audioDecoderConfig;
+  }
+  async initAudioContext() {
+    if (!this.audioContext) {
+      this.audioContext = new AudioContext({
+        sampleRate: (await this.getAudioDecoderConfig()).sampleRate,
+      });
+      this.aLog("Audio context initialized");
+    }
+    return this.audioContext;
+  }
+  async initAudioDecoder() {
+    const config = await this.getAudioDecoderConfig();
+    if (!config) {
+      throw new Error("Audio decoder config is not set");
+    }
+    this.aLog(
+      `Initializing audio decoder with config: ${JSON.stringify(config)}`
+    );
+    this.audioDecoder = new AudioDecoder({
       output: this.bufferAudioData.bind(this),
       error: (e) => console.error(e),
     });
-    console.log("[AudioRenderer] Initializing AudioDecoder...");
-    const config = this.audioConfig!;
-
-    debugLog(config);
-    console.log(
-      `AudioDecoder config: sampleRate=${this.sampleRate}, channelCount=${this.channelCount}`
-    );
-    let support = await AudioDecoder.isConfigSupported(config);
-    console.assert(support.supported);
-    this.decoder.configure(config);
-    console.log(
-      `AudioDecoder configured with sampleRate: ${this.sampleRate}, channelCount: ${this.channelCount}`
-    );
-    // Initialize the ring buffer between the decoder and the real-time audio
-    // rendering thread. The AudioRenderer has buffer space for approximately
-    // 500ms of decoded audio ahead.
+    this.audioDecoder.configure(config);
+    this.audioReader = this.audioDemuxer
+      .read("audio", 0, 0, AVSeekFlag.AVSEEK_FLAG_ANY)
+      .getReader();
     let sampleCountIn500ms =
-      DATA_BUFFER_DURATION * this.sampleRate * this.channelCount;
+      DATA_BUFFER_DURATION * config.sampleRate * config.numberOfChannels;
     let sab = RingBuffer.getStorageForCapacity(
       sampleCountIn500ms,
       Float32Array
@@ -89,30 +115,24 @@ export class AudioRenderer {
     this.fillDataBuffer();
     this.ready = promise as Promise<void>;
     await this.setupAudioOutput();
-    return promise;
+    return ;
   }
-
   async play() {
     // resolves when audio has effectively started: this can take some time if using
     // bluetooth, for example.
-    console.log("AudioRenderer.play() called");
-    debugLog("playback start");
+    this.aLog("playback start");
     this.playing = true;
-    this.fillDataBuffer();
-    console.log(
-      "AudioRenderer.play() - waiting for audio context to resume",
-      this.audioContext?.state
-    );
     if (this.audioContext?.state === "suspended") {
       await this.audioContext.resume();
     }
   }
-
-  pause() {
-    debugLog("playback stop");
+  async pause() {
     this.playing = false;
+    if (this.audioContext?.state === "running") {
+      await this.audioContext.suspend();
+    }
+    this.aLog("playback stop");
   }
-
   async fillDataBuffer() {
     // This method is called from multiple places to ensure the buffer stays
     // healthy. Sometimes these calls may overlap, but at any given point only
@@ -124,12 +144,11 @@ export class AudioRenderer {
     await this.fillDataBufferInternal();
     this.fillInProgress = false;
   }
-
   async fillDataBufferInternal() {
-    debugLog(`fillDataBufferInternal()`);
+    this.aLog(`fillDataBufferInternal()`);
 
-    if (this.decoder.decodeQueueSize >= DECODER_QUEUE_SIZE_MAX) {
-      debugLog("\tdecoder saturated");
+    if (this.audioDecoder.decodeQueueSize >= DECODER_QUEUE_SIZE_MAX) {
+      this.aLog("\tdecoder saturated");
       // Some audio decoders are known to delay output until the next input.
       // Make sure the DECODER_QUEUE_SIZE is big enough to avoid stalling on the
       // return below. We're relying on decoder output callback to trigger
@@ -141,11 +160,11 @@ export class AudioRenderer {
     let usedBufferElements =
       this.ringbuffer.capacity() - this.ringbuffer.available_write();
     let usedBufferSecs =
-      usedBufferElements / (this.channelCount * this.sampleRate);
+      usedBufferElements / (this.channelCount! * this.sampleRate!);
     let pcntOfTarget =
       (100 * usedBufferSecs) / DATA_BUFFER_DECODE_TARGET_DURATION;
     if (usedBufferSecs >= DATA_BUFFER_DECODE_TARGET_DURATION) {
-      debugLog(
+      this.aLog(
         `\taudio buffer full usedBufferSecs: ${usedBufferSecs} pcntOfTarget: ${pcntOfTarget}`
       );
 
@@ -169,17 +188,17 @@ export class AudioRenderer {
     // Decode up to the buffering target or until decoder is saturated.
     while (
       usedBufferSecs < DATA_BUFFER_DECODE_TARGET_DURATION &&
-      this.decoder.decodeQueueSize < DECODER_QUEUE_SIZE_MAX
+      this.audioDecoder.decodeQueueSize < DECODER_QUEUE_SIZE_MAX
     ) {
-      debugLog(
+      this.aLog(
         `\tMore samples. usedBufferSecs:${usedBufferSecs} < target:${DATA_BUFFER_DECODE_TARGET_DURATION}.`
       );
-      let chunk = await this.demuxer.consumeAudioFrame();
+      let chunk = await this.consumeAudioFrame();
       if (!chunk) {
-        debugLog("\tNo more audio frames to decode, stopping fillDataBuffer.");
+        this.aLog("\tNo more audio frames to decode, stopping fillDataBuffer.");
         break;
       }
-      this.decoder.decode(chunk);
+      this.audioDecoder.decode(chunk);
 
       // NOTE: awaiting the demuxer.readSample() above will also give the
       // decoder output callbacks a chance to run, so we may see usedBufferSecs
@@ -187,23 +206,22 @@ export class AudioRenderer {
       usedBufferElements =
         this.ringbuffer.capacity() - this.ringbuffer.available_write();
       usedBufferSecs =
-        usedBufferElements / (this.channelCount * this.sampleRate);
+        usedBufferElements / (this.channelCount! * this.sampleRate!);
     }
 
-    if (ENABLE_DEBUG_LOGGING) {
-      let logPrefix =
-        usedBufferSecs >= DATA_BUFFER_DECODE_TARGET_DURATION
-          ? "\tbuffered enough"
-          : "\tdecoder saturated";
-      pcntOfTarget =
-        (100 * usedBufferSecs) / DATA_BUFFER_DECODE_TARGET_DURATION;
-      debugLog(
-        logPrefix +
-          `; bufferedSecs:${usedBufferSecs} pcntOfTarget: ${pcntOfTarget}`
-      );
-    }
+    // if (ENABLE_DEBUG_LOGGING) {
+    //   let logPrefix =
+    //     usedBufferSecs >= DATA_BUFFER_DECODE_TARGET_DURATION
+    //       ? "\tbuffered enough"
+    //       : "\tdecoder saturated";
+    //   pcntOfTarget =
+    //     (100 * usedBufferSecs) / DATA_BUFFER_DECODE_TARGET_DURATION;
+    //   this.aLog(
+    //     logPrefix +
+    //       `; bufferedSecs:${usedBufferSecs} pcntOfTarget: ${pcntOfTarget}`
+    //   );
+    // }
   }
-
   bufferHealth() {
     return (
       (1 - this.ringbuffer.availableWrite() / this.ringbuffer.capacity()) * 100
@@ -251,11 +269,11 @@ export class AudioRenderer {
     if (this.interleavingBuffers.length != data.numberOfChannels) {
       this.interleavingBuffers = new Array(data.numberOfChannels);
       for (var i = 0; i < this.interleavingBuffers.length; i++) {
-        this.interleavingBuffers[i] = new Float32Array(data.numberOfFrames*2);
+        this.interleavingBuffers[i] = new Float32Array(data.numberOfFrames * 2);
       }
     }
     // Simple approach: always copy to f32-planar regardless of original format
-    for (var i = 0; i < this.channelCount; i++) {
+    for (var i = 0; i < this.channelCount!; i++) {
       data.copyTo(this.interleavingBuffers[i], {
         planeIndex: i,
         format: "f32-planar",
@@ -354,7 +372,7 @@ export class AudioRenderer {
             sampleRate: this.sampleRate,
             mediaChannelCount: this.channelCount,
           },
-          outputChannelCount: [this.channelCount],
+          outputChannelCount: [this.channelCount!],
         }
       );
       this.volumeGainNode = new GainNode(this.audioContext);
@@ -385,6 +403,41 @@ export class AudioRenderer {
     if (this.audioContext) {
       this.audioContext.close();
       this.audioContext = null;
+    }
+  }
+
+  async receiveAudioChunk(chunk: EncodedAudioChunk) {
+    this.queuedChunks.push(chunk);
+    if (this.queuedChunks.length > this.maxQueuedAudioChunks) {
+      this.aLog("Max queued audio chunks reached, pausing decoding");
+    }
+    this.aLog(
+      `Received audio chunk, total queued: ${this.queuedChunks.length}`
+    );
+  }
+  async consumeAudioFrame() {
+    if (this.queuedChunks.length === 0) {
+      console.log("Waiting for audio frames to be available");
+      while (this.queuedChunks.length === 0 && true) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
+    }
+    const audioFrame = this.queuedChunks.shift();
+    if (!audioFrame) {
+      console.error("No audio frame available to consume");
+      return null;
+    }
+    return audioFrame;
+  }
+  async tickRender() {
+    if (this.queuedChunks.length < this.maxQueuedAudioChunks) {
+      const { done: audioDone, value: audioValue } =
+        await this.audioReader.read();
+      if (audioDone) {
+        console.log("No more audio frames to read");
+        return;
+      }
+      await this.receiveAudioChunk(audioValue);
     }
   }
 }

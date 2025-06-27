@@ -7,7 +7,6 @@ export class Demuxer {
   decoder: VideoDecoder | null = null;
   audioDecoder: AudioDecoder | null = null;
   canvasContext: CanvasRenderingContext2D | null = null;
-  audioElement: HTMLAudioElement | null = null;
   fps: number = 0;
   fpsNumerator: number = 0;
   fpsDenominator: number = 0;
