@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { DemuxVideo2 } from "../components/DemuxVideo2";
 const LazyDemux = dynamic(() => import("../components/LazyDemux"), {
   ssr: false,
 });
@@ -123,7 +124,7 @@ export const DemuxRender = () => {
 
   return (
     <div className={`flex flex-col w-full h-full `}>
-      <h1>Demux Page</h1>
+      <h1>Overkill Demux Page</h1>
       <p>This is the demux page content. v.1.1</p>
       <span className="text-sm text-gray-500">
         FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}; Frame Count:{" "}
@@ -152,7 +153,7 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} suppressHydrationWarning={true} />
       </div> */}
-      <LazyDemux src={`${globalThis?.location?.origin}/nightmare.mp4`} />
+      <DemuxVideo2 src={`${globalThis?.location?.origin}/lyd.mp4`} />
       <div className={`flex flex-col`}>
         {debug.split("\n").map((msg) => (
           <span>{msg}</span>
