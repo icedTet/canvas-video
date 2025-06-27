@@ -574,6 +574,11 @@
   dependencies:
     csstype "^3.0.2"
 
+"@types/web@^0.0.243":
+  version "0.0.243"
+  resolved "https://registry.yarnpkg.com/@types/web/-/web-0.0.243.tgz#5423741e525752341a7139001e51947be1167bc3"
+  integrity sha512-fYVKx/7oxQTGNl0hkYO2N/cMdqrr41MWUZi2QavYIdK3ufiPr9nakCgQ4s+2kvdR0LflNKGcOvCUaHPGUAprtw==
+
 "@typescript-eslint/eslint-plugin@^5.4.2 || ^6.0.0 || ^7.0.0 || ^8.0.0":
   version "8.35.0"
   resolved "https://registry.yarnpkg.com/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.35.0.tgz#515170100ff867445fe0a17ce05c14fc5fd9ca63"
@@ -670,6 +675,11 @@
   dependencies:
     "@typescript-eslint/types" "8.35.0"
     eslint-visitor-keys "^4.2.1"
+
+"@typescript/lib-dom@npm:@types/web":
+  version "0.0.243"
+  resolved "https://registry.yarnpkg.com/@types/web/-/web-0.0.243.tgz#5423741e525752341a7139001e51947be1167bc3"
+  integrity sha512-fYVKx/7oxQTGNl0hkYO2N/cMdqrr41MWUZi2QavYIdK3ufiPr9nakCgQ4s+2kvdR0LflNKGcOvCUaHPGUAprtw==
 
 "@unrs/resolver-binding-android-arm-eabi@1.9.2":
   version "1.9.2"
@@ -2517,6 +2527,11 @@ reusify@^1.0.4:
   resolved "https://registry.yarnpkg.com/reusify/-/reusify-1.1.0.tgz#0fe13b9522e1473f51b558ee796e08f11f9b489f"
   integrity sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==
 
+ringbuf.js@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/ringbuf.js/-/ringbuf.js-0.4.0.tgz#8ab6421e7db0bbe7999184de1614373c9839f0c5"
+  integrity sha512-Y3BCsmTw/Ns70UAz2oVyMlaga+Sxac+fW8sXgdyiW75+ZtG4xh3cCSfBArzDK/s2FFZ67KzjFOu5ggKqqLaKmg==
+
 run-parallel@^1.1.9:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/run-parallel/-/run-parallel-1.2.0.tgz#66d1368da7bdf921eb9d95bd1a9229e7f21a43ee"
@@ -3040,6 +3055,11 @@ word-wrap@^1.2.5:
   version "1.2.5"
   resolved "https://registry.yarnpkg.com/word-wrap/-/word-wrap-1.2.5.tgz#d2c45c6dd4fbce621a66f136cbe328afd0410b34"
   integrity sha512-BN22B5eaMMI9UMtjrGd5g5eCYPpCPDUy0FJXbYsaT5zYxjFOckS53SQDE3pWkVoWpHXVb3BrYcEN4Twa55B5cA==
+
+worker-url@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/worker-url/-/worker-url-1.1.0.tgz#607b92f36822061dca8363d9208fea3dec6a0bcb"
+  integrity sha512-HDLF1ZcIsb9gGGUgYkvOmr4AJVkLLuWCdpJ4/xyETDYCQMuqmp3DvKkj7EGepQXvowaETg32lENI6Dmqq59ywA==
 
 yallist@^5.0.0:
   version "5.0.0"

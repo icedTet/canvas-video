@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Demuxer } from "../utils/demux";
+import { Demuxer } from "../utils/demux/demux";
+import { DemuxVideo } from "../components/DemuxVideo";
 async function download(
   url: string,
   setFileProgress: (progress: number) => void,
@@ -61,62 +62,62 @@ export const DemuxRender = () => {
       if (url) URL.revokeObjectURL(url);
     };
   }, [fileBlob]);
-  useEffect(() => {
-    const logDebug = (message: string) => {
-      setdebug((prev) => `${prev}\n${message}`);
-    };
-    // Initialize the canvas and set its dimensions
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
-    canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
-    (async () => {
-      const fileURL = "lyd.mp4" 
-      const headerInfos = await fetch(fileURL, {
-        method: "HEAD",
-        mode: "cors",
-        credentials: "omit",
-      });
-      const fileBlob = await download(
-        fileURL,
-        (p) => setprogress(p),
-        ~~(headerInfos.headers.get("content-length") ?? 0),
-        fileURL,
-        headerInfos.headers.get("content-type") || "video/webm"
-      );
-      console.log("File downloaded:", fileBlob);
-      setFileBlob(fileBlob);
-      const demuxer = new Demuxer();
-      await demuxer.load(new File([fileBlob], "file"));
-      const mp4Info = await demuxer.demux.getMediaInfo();
-      console.log("MP4 Info:", mp4Info);
-      logDebug(`\nMP4 Info: ${JSON.stringify(mp4Info, null, 2)}`);
-      let framesPerSecond = 0;
-      mp4Info.streams
-        .filter((s) => s.codec_type_string === "video")
-        .forEach((s) => {
-          console.log(
-            `Stream ${s.index}: ${s.codec_type_string} - ${s.codec_name} (${s.width}x${s.height})`
-          );
-          console.log(s.codec_string);
-          framesPerSecond =
-            Number(s.avg_frame_rate.split("/")[0]) /
-            Number(s.avg_frame_rate.split("/")[1]);
-        });
-      setSourceFPS(framesPerSecond);
-      const audio = videoRef.current;
-      console.log(
-        `Video FPS: ${framesPerSecond}, Audio: ${
-          audio ? "present" : "not present"
-        }`
-      );
-      await demuxer.setCanvas(canvas);
-      demuxer.render();
-      audio?.play()
-    })();
-  }, []);
+  // useEffect(() => {
+  //   const logDebug = (message: string) => {
+  //     setdebug((prev) => `${prev}\n${message}`);
+  //   };
+  //   // Initialize the canvas and set its dimensions
+  //   const canvas = canvasRef.current;
+  //   if (!canvas) return;
+  //   const ctx = canvas.getContext("2d");
+  //   if (!ctx) return;
+  //   canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
+  //   canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
+  //   (async () => {
+  //     const fileURL = "lyd.mp4";
+  //     const headerInfos = await fetch(fileURL, {
+  //       method: "HEAD",
+  //       mode: "cors",
+  //       credentials: "omit",
+  //     });
+  //     const fileBlob = await download(
+  //       fileURL,
+  //       (p) => setprogress(p),
+  //       ~~(headerInfos.headers.get("content-length") ?? 0),
+  //       fileURL,
+  //       headerInfos.headers.get("content-type") || "video/webm"
+  //     );
+  //     console.log("File downloaded:", fileBlob);
+  //     setFileBlob(fileBlob);
+  //     const demuxer = new Demuxer();
+  //     await demuxer.load(new File([fileBlob], "file"));
+  //     const mp4Info = await demuxer.demux.getMediaInfo();
+  //     console.log("MP4 Info:", mp4Info);
+  //     logDebug(`\nMP4 Info: ${JSON.stringify(mp4Info, null, 2)}`);
+  //     let framesPerSecond = 0;
+  //     mp4Info.streams
+  //       .filter((s) => s.codec_type_string === "video")
+  //       .forEach((s) => {
+  //         console.log(
+  //           `Stream ${s.index}: ${s.codec_type_string} - ${s.codec_name} (${s.width}x${s.height})`
+  //         );
+  //         console.log(s.codec_string);
+  //         framesPerSecond =
+  //           Number(s.avg_frame_rate.split("/")[0]) /
+  //           Number(s.avg_frame_rate.split("/")[1]);
+  //       });
+  //     setSourceFPS(framesPerSecond);
+  //     const audio = videoRef.current;
+  //     console.log(
+  //       `Video FPS: ${framesPerSecond}, Audio: ${
+  //         audio ? "present" : "not present"
+  //       }`
+  //     );
+  //     await demuxer.setCanvas(canvas);
+  //     demuxer.render();
+  //     audio?.play();
+  //   })();
+  // }, []);
 
   return (
     <div className={`flex flex-col w-full h-full `}>
@@ -131,14 +132,14 @@ export const DemuxRender = () => {
         {12730330.0 / (1000 * 1000)} MB
       </span>
 
-      <div
+      {/* <div
         className={`flex w-full grow bg-purple-400 relative`}
         ref={divRef}
         suppressHydrationWarning={true}
       >
         <video
           suppressHydrationWarning={true}
-          className="w-full rounded-lg shadow-lg opacity-0 absolute invert-100"
+          className="w-full rounded-lg shadow-lg opacity-0 absolute invert-100 hidden"
           controls
           content="true"
           playsInline
@@ -147,8 +148,9 @@ export const DemuxRender = () => {
         >
           Your browser does not support the video tag.
         </video>
-        <canvas ref={canvasRef} suppressHydrationWarning={true}/>
-      </div>
+        <canvas ref={canvasRef} suppressHydrationWarning={true} />
+      </div> */}
+      <DemuxVideo src={"http://localhost:3000/lyd.mp4"} />
       <div className={`flex flex-col`}>
         {debug.split("\n").map((msg) => (
           <span>{msg}</span>

@@ -17,6 +17,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/pages/demuxv1.tsxdis"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "src/pages/demuxv1.tsxdis", "src/utils/demux/audio-worklet.tsdis"],
   "exclude": ["node_modules"]
 }
