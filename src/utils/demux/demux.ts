@@ -56,7 +56,7 @@ export class Demuxer {
     this.fpsDenominator = Number(dem);
     this.fps = this.fpsNumerator / this.fpsDenominator;
   }
-  async getAudioConfig() {
+  async getAudioConfig(mediaInfo?: WebMediaInfo) {
     if (!this.mediaInfo) {
       throw new Error(
         "Media info not available. Please load the media file first."
@@ -74,7 +74,7 @@ export class Demuxer {
       codec: audioTrack.codec_string,
       numberOfChannels: audioTrack.channels,
       sampleRate: audioTrack.sample_rate,
-      // description: audioTrack.description,/=
+      description: audioTrack.extradata,
     } as AudioDecoderConfig;
   }
   async getVideoConfig() {
@@ -256,11 +256,12 @@ export class Demuxer {
       return null;
     });
 
-    console.log("Audio config:", audioConfig);
+    console.log("Audio config:", JSON.stringify(audioConfig, null, 2));
     const audioMux = new AudioRenderer(this, audioConfig!);
     if (!reader) {
       throw new Error("Failed to get video reader from demuxer");
     }
+    // const audioReader = this.demux.read("audio").getReader();
     this.processAudio();
     this.frameTime = performance.now();
     let lockout = 4;
@@ -269,7 +270,6 @@ export class Demuxer {
     while (true) {
       // console.log("DEBUG: Loop entered, lockout:", lockout);
       const { done, value } = await reader.read();
-
       //   .catch((er) => {
       //     console.error("Audio read error:", er);
       //     this.onerror && this.onerror(`Audio read error: ${er}`);
@@ -311,6 +311,12 @@ export class Demuxer {
       wasmFilePath: `${globalThis.document.location.origin}/dmux/web-demuxer.wasm`,
     });
     await demux2.load(this.file!);
+    const conf = demux2.getDecoderConfig("audio").catch((er) => {
+      console.error("Failed to get audio decoder config:", er);
+      this.onerror && this.onerror(`Failed to get audio decoder config: ${er}`);
+      return null;
+    });
+    this.getAudioConfig;
     const audioReader = demux2.read("audio", 0, 0).getReader();
     while (true) {
       const { done: audioDone, value: audioValue } = await audioReader.read();

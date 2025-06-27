@@ -3,7 +3,7 @@
 // The producer and the consumer can be on separate threads, but cannot change roles,
 // except with external synchronization.
 
- class RingBuffer {
+class RingBuffer {
   static getStorageForCapacity(capacity, type) {
     if (!type.BYTES_PER_ELEMENT) {
       throw "Pass in a ArrayBuffer subclass";
@@ -14,8 +14,10 @@
   // `sab` is a SharedArrayBuffer with a capacity calculated by calling
   // `getStorageForCapacity` with the desired capacity.
   constructor(sab, type) {
-    if (!ArrayBuffer.__proto__.isPrototypeOf(type) &&
-      type.BYTES_PER_ELEMENT !== undefined) {
+    if (
+      !ArrayBuffer.__proto__.isPrototypeOf(type) &&
+      type.BYTES_PER_ELEMENT !== undefined
+    ) {
       throw "Pass a concrete typed array class as second argument";
     }
 
@@ -85,8 +87,16 @@
     let second_part = to_write - first_part;
 
     // This part will cause GC: don't use in the real time thread.
-    var first_part_buf = new this._type(this.storage.buffer, 8 + wr * 4, first_part);
-    var second_part_buf = new this._type(this.storage.buffer, 8 + 0, second_part);
+    var first_part_buf = new this._type(
+      this.storage.buffer,
+      8 + wr * 4,
+      first_part
+    );
+    var second_part_buf = new this._type(
+      this.storage.buffer,
+      8 + 0,
+      second_part
+    );
 
     cb(first_part_buf, second_part_buf);
 
@@ -194,34 +204,77 @@
   }
 }
 
-registerProcessor("AudioSink", class AudioSink extends AudioWorkletProcessor {
-  constructor(options) {
-    super();
-    console.log("AudioSink constructor called", options);
-    let sab = options.processorOptions.sab;
-    this.consumerSide = new RingBuffer(sab, Float32Array);
-    this.mediaChannelCount = options.processorOptions.mediaChannelCount;
-    // https://www.w3.org/TR/webaudio/#render-quantum-size
-    const RENDER_QUANTUM_SIZE = 128;
-    this.deinterleaveBuffer = new Float32Array(this.mediaChannelCount * RENDER_QUANTUM_SIZE);
-  }
+registerProcessor(
+  "AudioSink",
+  class AudioSink extends AudioWorkletProcessor {
+    constructor(options) {
+      super();
+      console.log("AudioSink constructor called", options);
+      let sab = options.processorOptions.sab;
+      this.consumerSide = new RingBuffer(sab, Float32Array);
+      this.mediaChannelCount = options.processorOptions.mediaChannelCount;
+      // https://www.w3.org/TR/webaudio/#render-quantum-size
+      const RENDER_QUANTUM_SIZE = 128;
+      this.deinterleaveBuffer = new Float32Array(
+        this.mediaChannelCount * RENDER_QUANTUM_SIZE
+      );
+    }
 
-  // Deinterleave audio data from input (linear Float32Array) to output, an
-  // array of Float32Array.
-  deinterleave(input, output) {
-    let inputIdx = 0;
-    let outputChannelCount = output.length;
-    for (var i = 0; i < output[0].length; i++) {
-      for (var j = 0; j < outputChannelCount; j++) {
-        output[j][i] = input[inputIdx++];
+    // Deinterleave audio data from input (linear Float32Array) to output, an
+    // array of Float32Array.
+    deinterleave(input, output) {
+      let inputIdx = 0;
+      let outputChannelCount = output.length;
+      console.log(
+        "Deinterleaving audio data",
+        input.length,
+        "samples into",
+        outputChannelCount,
+        "channels"
+      );
+      // Debug: Check for invalid audio samples
+      let hasInvalidSamples = false;
+      for (let i = 0; i < input.length; i++) {
+        if (
+          Math.abs(input[i]) > 1.0 ||
+          isNaN(input[i]) ||
+          !isFinite(input[i])
+        ) {
+          hasInvalidSamples = true;
+          break;
+        }
+      }
+      if (hasInvalidSamples) {
+        console.log("Warning: Invalid audio samples detected");
+      }
+
+      for (var i = 0; i < output[0].length; i++) {
+        for (var j = 0; j < outputChannelCount; j++) {
+          output[j][i] = input[inputIdx++];
+        }
       }
     }
-  }
-  process(inputs, outputs, params) {
-    if (this.consumerSide.pop(this.deinterleaveBuffer) != this.deinterleaveBuffer.length) {
-      console.log("Warning: audio underrun");
+    process(inputs, outputs, params) {
+      const samplesRead = this.consumerSide.pop(this.deinterleaveBuffer);
+      if (samplesRead != this.deinterleaveBuffer.length) {
+        console.log(
+          "Warning: audio underrun",
+          samplesRead,
+          "of",
+          this.deinterleaveBuffer.length
+        );
+        // Fill remaining buffer with silence to prevent distortion
+        for (let i = samplesRead; i < this.deinterleaveBuffer.length; i++) {
+          this.deinterleaveBuffer[i] = 0.0;
+        }
+      }
+      if (p1) {
+        console.log({inputs, outputs, params});
+        p1 = false;
+      }
+      this.deinterleave(this.deinterleaveBuffer, outputs[0]);
+      return true;
     }
-    this.deinterleave(this.deinterleaveBuffer, outputs[0]);
-    return true;
   }
-});
+);
+var p1 = true;

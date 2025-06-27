@@ -242,39 +242,54 @@ export class AudioRenderer {
   }
 
   bufferAudioData(data: AudioData) {
-    console.log("bufferAudioData() called", data);
+    console.log("bufferAudioData() called", {
+      numberOfChannels: data.numberOfChannels,
+      numberOfFrames: data.numberOfFrames,
+      sampleRate: data.sampleRate,
+      format: data.format,
+    });
     if (this.interleavingBuffers.length != data.numberOfChannels) {
-      this.interleavingBuffers = new Array(this.channelCount);
+      this.interleavingBuffers = new Array(data.numberOfChannels);
       for (var i = 0; i < this.interleavingBuffers.length; i++) {
         this.interleavingBuffers[i] = new Float32Array(data.numberOfFrames);
       }
     }
-    // Write to temporary planar arrays, and interleave into the ring buffer.
+    // Simple approach: always copy to f32-planar regardless of original format
     for (var i = 0; i < this.channelCount; i++) {
       data.copyTo(this.interleavingBuffers[i], {
         planeIndex: i,
         format: "f32-planar",
       });
+      console.log(
+        `Copied channel ${i} to interleaving buffer, length: ${this.interleavingBuffers[i].length}`
+      );
     }
+
     // Write the data to the ring buffer. Because it wraps around, there is
     // potentially two copyTo to do.
+    console.log(
+      `Writing ${data.numberOfFrames} frames, ${data.numberOfChannels} channels to ringbuffer`
+    );
     let wrote = this.ringbuffer.writeCallback(
       data.numberOfFrames * data.numberOfChannels,
+      //@ts-ignore
       (first_part, second_part) => {
-        const first = first_part as Float32Array;
-        const second = second_part as Float32Array;
-        this.interleave(this.interleavingBuffers, 0, first.length, first, 0);
         this.interleave(
           this.interleavingBuffers,
-          first.length,
-          second.length,
-          second,
+          0,
+          first_part.length,
+          first_part as Float32Array,
           0
         );
-        return first.length + second.length;
+        this.interleave(
+          this.interleavingBuffers,
+          first_part.length,
+          second_part.length,
+          second_part as Float32Array,
+          0
+        );
       }
     );
-
     // FIXME - this could theoretically happen since we're pretty agressive
     // about saturating the decoder without knowing the size of the
     // AudioData.duration vs ring buffer capacity.
@@ -323,6 +338,12 @@ export class AudioRenderer {
         )
       );
 
+      console.log("AudioWorklet module loaded", {
+        sampleRate: this.sampleRate,
+        channelCount: this.channelCount,
+        //@ts-ignore
+        sab: this.ringbuffer.buf,
+      });
       this.audioWorkletNode = new AudioWorkletNode(
         this.audioContext,
         "AudioSink",
@@ -333,11 +354,12 @@ export class AudioRenderer {
             sampleRate: this.sampleRate,
             mediaChannelCount: this.channelCount,
           },
+          outputChannelCount: [this.channelCount],
         }
       );
-      //   this.volumeGainNode = new GainNode(this.audioContext);
+      this.volumeGainNode = new GainNode(this.audioContext);
       this.audioWorkletNode
-        // .connect(this.volumeGainNode)
+        .connect(this.volumeGainNode)
         .connect(this.audioContext.destination);
 
       console.log("Audio output setup complete");
