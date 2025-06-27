@@ -81,18 +81,29 @@ export class LazyMovieRenderer {
     await this.videoRenderer.asyncTickDecode();
   }
   async renderTick() {
-    await this.videoRenderer.tickRender();  
+    await this.videoRenderer.tickRender();
     await this.lazyAudioRenderer.tickRender();
   }
   async render() {
-    
     await this.videoRenderer.preload();
-    this.anchorTime = 0; // Set the anchor time to the current time in seconds
+
+    let last = this.lazyAudioRenderer.audioElement!.currentTime;
+    this.lazyAudioRenderer.play();
+    while (last === this.lazyAudioRenderer.audioElement!.currentTime && last < 0.08) {
+      await new Promise((r) =>
+        setTimeout(() => {
+          r(0);
+        }, 0)
+      );
+      last = this.lazyAudioRenderer.audioElement!.currentTime;  
+    }
+    this.currentPosition = this.lazyAudioRenderer.audioElement!.currentTime;
+    this.anchorTime = performance.now() - this.currentPosition * 1000;
     while (true) {
-      // this.currentPosition = performance.now() / 1000 - this.anchorTime / 1000;
-      // this.log(`Current position: ${this.currentPosition.toFixed(2)}s`);
-      await this.renderAsyncTickTasks();
+      this.currentPosition = performance.now() / 1000 - this.anchorTime / 1000;
+      this.log(`Current position: ${this.currentPosition.toFixed(4)}s`);
       await this.renderTick();
+      this.renderAsyncTickTasks();
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
   }

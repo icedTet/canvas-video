@@ -34,12 +34,6 @@ export const LazyDemux = (props: { src: string }) => {
   }, [src]);
   return (
     <div className="flex flex-col w-full grow bg-purple-400/0 relative">
-      <video
-        ref={videoRef}
-        src={vidSRC}
-        controls
-        className={`opacity-50 absolute top-0 left-0`}
-      />
       <div className={`w-auto aspect-video relative`}>
         <canvas
           ref={canvasRef}
@@ -49,7 +43,7 @@ export const LazyDemux = (props: { src: string }) => {
         />
         <video
           ref={videoRef}
-          className={`absolute top-0 left-0 w-full h-full opacity-50 z-10`}
+          className={`absolute top-0 left-0 w-full h-full opacity-0 z-10`}
         ></video>
       </div>
       <div className={`grow bg-blue-300`}></div>

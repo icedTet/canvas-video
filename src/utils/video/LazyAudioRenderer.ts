@@ -57,11 +57,20 @@ export class LazyAudioRenderer {
     this.audioElement.pause();
   }
   tickRender() {
-    if (this.jumpSync && this.audioElement && this.loaded) {
-      // check if audioElement is set
-      this.audioElement.play();
-      this.parent.currentPosition = this.audioElement.currentTime; // Sync current position with audio
-    }
+    // if (this.jumpSync && this.audioElement && this.loaded) {
+    //   // check if audioElement is set
+    //   this.jumpSync = false; // Disable jump sync after the first tick
+    //   // Sync the audio playback position with the current video position
+    //   // this.audioElement.currentTime = performance.now() / 1000 - this.parent.anchorTime / 1000;
+    //   this.play();
+    // }
+    console.log(
+      `[LazyAudioRenderer] Current audio time: ${this.audioElement?.currentTime.toFixed(
+        5
+      )}s`,
+      "SUPPOSED TO BE AT",
+      this.audioElement!.currentTime * 60
+    );
     // const currentTime = this.audioElement?.currentTime || 0;
     // this.parent.currentPosition = currentTime;
   }

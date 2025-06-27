@@ -8,7 +8,7 @@ export class VideoRenderer {
   videoDecoderConfig: VideoDecoderConfig | null = null; // Video decoder configuration
   videoDecoder: VideoDecoder | null = null; // Video decoder instance
   canvasContext: CanvasRenderingContext2D | null = null; // Canvas context for rendering video frames
-  private maxQueuedVideoFrames: number = 300; // Maximum number of video frames to queue. After this, frames decoding will pause until the queue has space.
+  private maxQueuedVideoFrames: number = 30; // Maximum number of video frames to queue. After this, frames decoding will pause until the queue has space.
   private queuedFrames: VideoFrame[] = []; // Queue for video frames
 
   nextFrameTime: number = 0; // currentPosition time for the next frame to be rendered
@@ -163,10 +163,10 @@ export class VideoRenderer {
     }
   }
   async preload() {
-    while (
-      this.streamReader &&
-      this.queuedFrames.length < this.maxQueuedVideoFrames
-    ) {
+    while (!this.streamReader) {
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+    while (this.queuedFrames.length < this.maxQueuedVideoFrames) {
       try {
         const { done, value } = await this.streamReader.read();
         if (done) {
@@ -205,18 +205,34 @@ export class VideoRenderer {
       this.nextFrameTime <= this.parent.currentPosition &&
       this.queuedFrames.length > 0
     ) {
+      console.log(
+        `Rendering frame at position: ${this.parent.currentPosition}, next frame time: ${this.nextFrameTime}`,
+        this.framesRendered
+      );
       // check if we have a frame to render, and if the time is right
       if (this.queuedFrames.length > 0) {
         this.renderNextFrame();
-        // Update the next frame time based on the current position and the expected frame rate
-        this.nextFrameTime =
-          this.parent.anchorTime / 1000 +
+
+        // Our next render is starttime (this.parent.anchorTime) + frames * timePerFrame
+        const startTime = this.parent.anchorTime / (1000 * 1000);
+        const nextFrame =
           (this.framesRendered * this.fpsDenominator) / this.fpsNumerator;
+        console.log({ startTime, nextFrame });
+        // Update the next frame time based on the current position and the expected frame rate
+        this.nextFrameTime = startTime + nextFrame;
+
         this.framesRendered++;
         this.debugFrameCount++;
       } else {
         this.vLog("No frames to render");
       }
+    } else {
+      console.log(
+        "render skipped",
+        this.nextFrameTime,
+        this.parent.currentPosition,
+        this.queuedFrames.length
+      );
     }
 
     // If we have no frames to render, we finish our tick for video.
