@@ -16,6 +16,7 @@ export class LazyMovieRenderer {
   videoDuration: number = 0; // Duration of the video in seconds
   currentPosition: number = 0; // Current playback position in seconds
   anchorTime: number = 0; // Anchor time, used to ensure consistent playback timing
+  destroyed: boolean = false; // Indicates if the renderer has been destroyed
   constructor(file: File | string, doNotInitialize = false) {
     this.videoRenderer = new VideoRenderer(this);
     this.lazyAudioRenderer = new LazyAudioRenderer(this);
@@ -72,6 +73,14 @@ export class LazyMovieRenderer {
     this.play();
   }
   /**
+   * Stops all rendering and cleans up resources.
+   */
+  async stop() {
+    this.videoRenderer.stop();
+    this.lazyAudioRenderer.stop();
+    this.destroyed = true; // Mark the renderer as destroyed
+  }
+  /**
    * ==== Render Loop ====
    *
    */
@@ -89,19 +98,26 @@ export class LazyMovieRenderer {
 
     let last = this.lazyAudioRenderer.audioElement!.currentTime;
     this.lazyAudioRenderer.play();
-    while (last === this.lazyAudioRenderer.audioElement!.currentTime && last < 0.08) {
+    while (
+      last === this.lazyAudioRenderer.audioElement!.currentTime &&
+      last < 0.08
+    ) {
       await new Promise((r) =>
         setTimeout(() => {
           r(0);
         }, 0)
       );
-      last = this.lazyAudioRenderer.audioElement!.currentTime;  
+      last = this.lazyAudioRenderer.audioElement!.currentTime;
     }
     this.currentPosition = this.lazyAudioRenderer.audioElement!.currentTime;
     this.anchorTime = performance.now() - this.currentPosition * 1000;
     while (true) {
       this.currentPosition = performance.now() / 1000 - this.anchorTime / 1000;
       this.log(`Current position: ${this.currentPosition.toFixed(4)}s`);
+      if (this.destroyed) {
+        this.log("Renderer destroyed, stopping render loop");
+        break;
+      }
       await this.renderTick();
       this.renderAsyncTickTasks();
       await new Promise((resolve) => requestAnimationFrame(resolve));

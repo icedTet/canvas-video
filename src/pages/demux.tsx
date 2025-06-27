@@ -48,86 +48,20 @@ export const DemuxRender = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const divRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [fileBlob, setFileBlob] = useState(null as Blob | null);
-  const [fps, setFps] = useState(0);
-  const [sourceFPS, setSourceFPS] = useState(0);
-  const [urlBlob, setUrlBlob] = useState(null as string | null);
   const [progress, setprogress] = useState(0 as number);
   const [debug, setdebug] = useState("");
   const [currentFrameCount, setCurrentFrameCount] = useState(0);
   const [expectedFrameCount, setExpectedFrameCount] = useState(0);
-  useEffect(() => {
-    if (!fileBlob) return;
-    const url = URL.createObjectURL(fileBlob);
-    setUrlBlob(url);
-    return () => {
-      if (url) URL.revokeObjectURL(url);
-    };
-  }, [fileBlob]);
-  // useEffect(() => {
-  //   const logDebug = (message: string) => {
-  //     setdebug((prev) => `${prev}\n${message}`);
-  //   };
-  //   // Initialize the canvas and set its dimensions
-  //   const canvas = canvasRef.current;
-  //   if (!canvas) return;
-  //   const ctx = canvas.getContext("2d");
-  //   if (!ctx) return;
-  //   canvas.width = divRef.current?.clientWidth || 800; // Default width if divRef is not set
-  //   canvas.height = divRef.current?.clientHeight || 600; // Default height if divRef is not setz
-  //   (async () => {
-  //     const fileURL = "lyd.mp4";
-  //     const headerInfos = await fetch(fileURL, {
-  //       method: "HEAD",
-  //       mode: "cors",
-  //       credentials: "omit",
-  //     });
-  //     const fileBlob = await download(
-  //       fileURL,
-  //       (p) => setprogress(p),
-  //       ~~(headerInfos.headers.get("content-length") ?? 0),
-  //       fileURL,
-  //       headerInfos.headers.get("content-type") || "video/webm"
-  //     );
-  //     console.log("File downloaded:", fileBlob);
-  //     setFileBlob(fileBlob);
-  //     const demuxer = new Demuxer();
-  //     await demuxer.load(new File([fileBlob], "file"));
-  //     const mp4Info = await demuxer.demux.getMediaInfo();
-  //     console.log("MP4 Info:", mp4Info);
-  //     logDebug(`\nMP4 Info: ${JSON.stringify(mp4Info, null, 2)}`);
-  //     let framesPerSecond = 0;
-  //     mp4Info.streams
-  //       .filter((s) => s.codec_type_string === "video")
-  //       .forEach((s) => {
-  //         console.log(
-  //           `Stream ${s.index}: ${s.codec_type_string} - ${s.codec_name} (${s.width}x${s.height})`
-  //         );
-  //         console.log(s.codec_string);
-  //         framesPerSecond =
-  //           Number(s.avg_frame_rate.split("/")[0]) /
-  //           Number(s.avg_frame_rate.split("/")[1]);
-  //       });
-  //     setSourceFPS(framesPerSecond);
-  //     const audio = videoRef.current;
-  //     console.log(
-  //       `Video FPS: ${framesPerSecond}, Audio: ${
-  //         audio ? "present" : "not present"
-  //       }`
-  //     );
-  //     await demuxer.setCanvas(canvas);
-  //     demuxer.render();
-  //     audio?.play();
-  //   })();
-  // }, []);
+  const [url, setUrl] = useState("");
+  const [enterURL, setEnterURL] = useState("");
 
   return (
     <div className={`flex flex-col w-full h-full `}>
       <h1>Demux Page</h1>
       <p>This is the demux page content. v.1.1</p>
       <span className="text-sm text-gray-500">
-        FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}; Frame Count:{" "}
-        {currentFrameCount} / Expected: {expectedFrameCount}
+        {/* FPS: {fps.toFixed(2)} / Source FPS: {sourceFPS.toFixed(2)}; Frame Count:{" "}
+        {currentFrameCount} / Expected: {expectedFrameCount} */}
       </span>
       <span className="text-sm text-gray-500">
         Download Progress: {(progress / (1000 * 1000)).toFixed(2)} MB /{" "}
@@ -152,7 +86,23 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} suppressHydrationWarning={true} />
       </div> */}
-      <LazyDemux src={`${globalThis?.location?.origin}/afterdark.mkv`} />
+      <LazyDemux src={enterURL} />
+      <input
+        type="text"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+        placeholder="Enter video URL"
+      />
+      <button
+        onClick={async () => {
+          setEnterURL(url);
+          // videoRef.current!.src = URL.createObjectURL(file);
+          // videoRef.current!.play();
+        }}
+      >
+        Load Video
+      </button>
+
       <div className={`flex flex-col`}>
         {debug.split("\n").map((msg) => (
           <span>{msg}</span>

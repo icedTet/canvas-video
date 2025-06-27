@@ -237,4 +237,15 @@ export class VideoRenderer {
 
     // If we have no frames to render, we finish our tick for video.
   }
+
+  stop() {
+    this.videoDecoder?.close();
+    this.videoDemuxer.destroy();
+    this.streamReader?.cancel();
+    this.streamReader?.releaseLock();
+    this.queuedFrames.forEach((frame) => frame.close());
+    this.queuedFrames = [];
+    this.vLog("VideoRenderer stopped and resources cleaned up");
+  }
+  
 }

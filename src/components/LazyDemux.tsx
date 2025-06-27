@@ -22,15 +22,15 @@ export const LazyDemux = (props: { src: string }) => {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    if (muxRef.current) {
-      return;
-    }
     const demuxer = new LazyMovieRenderer(src);
     muxRef.current = demuxer;
     demuxer.setCanvas(canvas);
     demuxer.setAudioElement(video);
 
     demuxer.playWhenReady();
+    return ()=>{
+      demuxer.stop()
+    }
   }, [src]);
   return (
     <div className="flex flex-col w-full grow bg-purple-400/0 relative">

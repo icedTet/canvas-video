@@ -74,4 +74,19 @@ export class LazyAudioRenderer {
     // const currentTime = this.audioElement?.currentTime || 0;
     // this.parent.currentPosition = currentTime;
   }
+  stop() {
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.src = "";
+      return;
+    }
+
+    this.audioElement = null;
+    if (this.blobURL) {
+      URL.revokeObjectURL(this.blobURL); // Clean up the blob URL if it was created
+      this.blobURL = null; // Clear the blob URL reference
+    }
+    // Clean up resources
+    this.parent.log("AudioRenderer stopped and resources cleaned up");
+  }
 }
