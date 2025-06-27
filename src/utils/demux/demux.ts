@@ -96,7 +96,7 @@ export class Demuxer {
     if (!audio) {
       throw new Error("Audio element not provided");
     }
-    this.audioElement = audio;
+    // this.audioElement = audio;
   }
   async setCanvas(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
