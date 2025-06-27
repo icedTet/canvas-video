@@ -150,7 +150,7 @@ export const DemuxRender = () => {
         </video>
         <canvas ref={canvasRef} suppressHydrationWarning={true} />
       </div> */}
-      <DemuxVideo src={`${globalThis?.location.origin}/lyd.mp4`} />
+      <DemuxVideo src={`${globalThis?.location?.origin}/lyd.mp4`} />
       <div className={`flex flex-col`}>
         {debug.split("\n").map((msg) => (
           <span>{msg}</span>
