@@ -28,6 +28,12 @@ export const LazyDemux = (props: { src: string }) => {
     demuxer.setAudioElement(video);
 
     demuxer.playWhenReady();
+    setTimeout(() => {
+      demuxer.seek(15)
+    }, 1000);
+    setTimeout(() => {
+      demuxer.seek(5);
+    }, 5000);
     return ()=>{
       demuxer.stop()
     }
@@ -43,7 +49,7 @@ export const LazyDemux = (props: { src: string }) => {
         />
         <video
           ref={videoRef}
-          className={`absolute top-0 left-0 w-full h-full opacity-0 z-10`}
+          className={`absolute top-full left-0 w-full h-full opacity-100 z-10 hue-rotate-60 -scale-y-100 pointer-events-none`}
         ></video>
       </div>
       <div className={`grow bg-blue-300`}></div>

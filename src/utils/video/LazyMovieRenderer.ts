@@ -1,6 +1,7 @@
 import { WebDemuxer, WebMediaInfo } from "web-demuxer";
 import { VideoRenderer } from "./VideoRenderer";
 import { LazyAudioRenderer } from "./LazyAudioRenderer";
+import { sleep } from "../sleep";
 const LOG_STUFF = true; // Set to true to enable logging
 export class LazyMovieRenderer {
   // Stateful properties
@@ -17,6 +18,8 @@ export class LazyMovieRenderer {
   currentPosition: number = 0; // Current playback position in seconds
   anchorTime: number = 0; // Anchor time, used to ensure consistent playback timing
   destroyed: boolean = false; // Indicates if the renderer has been destroyed
+  seeking: boolean = false; // Indicates if a seek operation is in progress
+  dontUpdateTime: boolean = false; // Flag to prevent updating time during certain operations
   constructor(file: File | string, doNotInitialize = false) {
     this.videoRenderer = new VideoRenderer(this);
     this.lazyAudioRenderer = new LazyAudioRenderer(this);
@@ -90,8 +93,48 @@ export class LazyMovieRenderer {
     await this.videoRenderer.asyncTickDecode();
   }
   async renderTick() {
-    await this.videoRenderer.tickRender();
+    this.videoRenderer.tickRender();
     await this.lazyAudioRenderer.tickRender();
+  }
+  async seek(time: number) {
+    this.seeking = true; // Set seeking flag to true
+    this.lazyAudioRenderer.pause();
+    this.lazyAudioRenderer.audioElement!.currentTime = time;
+    await this.videoRenderer.seek(time);
+
+    console.log(`Seeking to ${time.toFixed(4)}s`);
+    await this.videoRenderer.preload(40);
+
+    while (this.lazyAudioRenderer.audioElement?.readyState !== 4) {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+    this.lazyAudioRenderer.play();
+    this.seeking = false; // Reset seeking flag after seek is complete
+    // wait for audio duration to ramp up
+    // let last = this.lazyAudioRenderer.audioElement!.currentTime;
+    // while (
+    //   last === this.lazyAudioRenderer.audioElement!.currentTime &&
+    //   last < 0.08
+    // ) {
+    //   await new Promise((r) =>
+    //     setTimeout(() => {
+    //       r(0);
+    //     }, 0)
+    //   );
+    //   last = this.lazyAudioRenderer.audioElement!.currentTime;
+    // }
+    // this.currentPosition = this.lazyAudioRenderer.audioElement!.currentTime;
+    // this.anchorTime = performance.now() - this.currentPosition * 1000;
+    // this.log(`Seeked to ${this.currentPosition.toFixed(4)}s`);
+    // this.seeking = false; // Reset seeking flag after seek is complete
+    // let driftarr = [] as number[]; // Array to store drift values
+    // for (let i = 0; i < 300; i++) {
+    //   const audioTime = this.lazyAudioRenderer.audioElement!.currentTime;
+    //   this.currentPosition = audioTime;
+    //   this.anchorTime = performance.now() - audioTime * 1000;
+    //   await new Promise((resolve) => requestAnimationFrame(resolve)); // Wait for the next frame
+    // }
+    // console.log(JSON.stringify(driftarr, null, 2));
   }
   async render() {
     await this.videoRenderer.preload();
@@ -112,7 +155,15 @@ export class LazyMovieRenderer {
     this.currentPosition = this.lazyAudioRenderer.audioElement!.currentTime;
     this.anchorTime = performance.now() - this.currentPosition * 1000;
     while (true) {
-      this.currentPosition = performance.now() / 1000 - this.anchorTime / 1000;
+      if (this.seeking) {
+        console.log("Seeking in progress, skipping render tick");
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        continue;
+      }
+      if (!this.dontUpdateTime) {
+        this.currentPosition =
+          this.lazyAudioRenderer.audioElement!.currentTime || 0; // Update current position from audio element
+      }
       this.log(`Current position: ${this.currentPosition.toFixed(4)}s`);
       if (this.destroyed) {
         this.log("Renderer destroyed, stopping render loop");

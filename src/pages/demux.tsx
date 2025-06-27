@@ -52,7 +52,7 @@ export const DemuxRender = () => {
   const [debug, setdebug] = useState("");
   const [currentFrameCount, setCurrentFrameCount] = useState(0);
   const [expectedFrameCount, setExpectedFrameCount] = useState(0);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(`${globalThis.location?.origin}/mcad.webm`);
   const [enterURL, setEnterURL] = useState("");
 
   return (

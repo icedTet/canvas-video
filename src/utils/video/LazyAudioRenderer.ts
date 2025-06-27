@@ -71,6 +71,7 @@ export class LazyAudioRenderer {
       "SUPPOSED TO BE AT",
       this.audioElement!.currentTime * 60
     );
+    console.log(this.audioElement?.readyState)
     // const currentTime = this.audioElement?.currentTime || 0;
     // this.parent.currentPosition = currentTime;
   }

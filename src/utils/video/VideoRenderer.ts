@@ -162,22 +162,31 @@ export class VideoRenderer {
       );
     }
   }
-  async preload() {
+  async preload(frames?: number) {
     while (!this.streamReader) {
+      console.log("Waiting for stream reader to be initialized");
       await new Promise((r) => requestAnimationFrame(r));
     }
-    while (this.queuedFrames.length < this.maxQueuedVideoFrames) {
+    while (this.queuedFrames.length < (frames || this.maxQueuedVideoFrames)) {
+      console.log(
+        `Preloading video frames, current queue length: ${this.queuedFrames.length}`
+      );
       try {
         const { done, value } = await this.streamReader.read();
+        console.log({ done, value });
         if (done) {
           this.vLog("No more video frames to preload");
           break;
         }
+        console.log({ value });
         await this.videoDecoder?.decode(value);
         this.vLog(
-          `Preloaded video chunk, total queued: ${this.queuedFrames.length}`
+          `Preloaded video chunk, total queued: ${
+            frames || this.maxQueuedVideoFrames
+          }`
         );
       } catch (error) {
+        console.error("Error preloading video stream:", error);
         this.vLog(`Error preloading video stream: ${error}`);
       }
     }
@@ -214,13 +223,10 @@ export class VideoRenderer {
         this.renderNextFrame();
 
         // Our next render is starttime (this.parent.anchorTime) + frames * timePerFrame
-        const startTime = this.parent.anchorTime / (1000 * 1000);
-        const nextFrame =
-          (this.framesRendered * this.fpsDenominator) / this.fpsNumerator;
-        console.log({ startTime, nextFrame });
         // Update the next frame time based on the current position and the expected frame rate
-        this.nextFrameTime = startTime + nextFrame;
-
+        this.nextFrameTime =
+          ((this.framesRendered + 6) * this.fpsDenominator) /
+          this.fpsNumerator;
         this.framesRendered++;
         this.debugFrameCount++;
       } else {
@@ -237,7 +243,40 @@ export class VideoRenderer {
 
     // If we have no frames to render, we finish our tick for video.
   }
+  async seek(time: number) {
+    this.vLog(`Seeking to time: ${time}`);
+    // this.videoDemuxer.seek("video", time, AVSeekFlag.AVSEEK_FLAG_ANY);
+    this.streamReader?.cancel(); // Cancel the current stream reader
+    // reinit this.videoDemuxer
+    this.videoDemuxer.destroy();
+    this.videoDemuxer = new WebDemuxer({
+      wasmFilePath: `${globalThis.document.location.origin}/dmux/web-demuxer.wasm`,
+    });
 
+    await this.videoDemuxer.load(this.parent.file);
+    this.videoDecoder?.close();
+    const decoder = new VideoDecoder({
+      output: this.receiveVideoFrame.bind(this),
+      error: (e) => {
+        this.vLog(`Video decoder error: ${e}`);
+      },
+    });
+    const config = await this.getVideoDecoderConfig();
+    await decoder.configure(config);
+    this.videoDecoder = decoder;
+    this.streamReader = this.videoDemuxer
+      .read("video", time, 0, AVSeekFlag.AVSEEK_FLAG_FRAME)
+      .getReader();
+    this.queuedFrames.forEach((frame) => frame.close());
+    this.queuedFrames = [];
+    this.framesRendered = (time * this.fpsNumerator) / this.fpsDenominator;
+    this.nextFrameTime = time;
+    console.log(
+      "Seek completed and video frames reset",
+      this.videoDecoder?.state,
+      this.videoDemuxer
+    );
+  }
   stop() {
     this.videoDecoder?.close();
     this.videoDemuxer.destroy();
@@ -247,5 +286,4 @@ export class VideoRenderer {
     this.queuedFrames = [];
     this.vLog("VideoRenderer stopped and resources cleaned up");
   }
-  
 }
